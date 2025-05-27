@@ -1,8 +1,14 @@
 # movie-recommender
 
 # Run dev
+
 fastapi dev main.py
 
-# Add new dependecies
-Run this after adding dependecies and before updating docker image
-pip freeze > requirements.txt
+
+# Update code
+
+fly deploy
+
+# Dev site
+
+https://movie-recommender-fragrant-shape-7289.fly.dev/
