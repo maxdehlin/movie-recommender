@@ -1,8 +1,7 @@
 # movie-recommender
 
-# Run dev
-
-fastapi dev main.py
+# Run locally
+fastapi dev app.py
 
 
 # Update code
