@@ -1,7 +1,8 @@
 # movie-recommender
 
 # Run locally
-fastapi dev app.py
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
+<!-- fastapi dev app.py -->
 
 
 # Update code

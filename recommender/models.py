@@ -44,3 +44,11 @@ class MovieSimilarity(Base):
     __table_args__ = (
         Index("ix_movie_similarities_movie_id_weighted_sim", "movie_id", "weighted_sim"),
     )
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    google_id = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=True)
