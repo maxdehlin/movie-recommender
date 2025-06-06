@@ -17,3 +17,5 @@ https://movie-recommender-fragrant-shape-7289.fly.dev/
 psql -U {user} -d movie_db
 
 
+testing fly deployment
+
