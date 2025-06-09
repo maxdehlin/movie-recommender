@@ -8,7 +8,7 @@ from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from jose import jwt
-from recommender.db import get_db
+from recommender.db import get_db, insert_user
 from recommender.models import User
 import schemas
 # Load environment variables from a “.env” file 
@@ -63,14 +63,8 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     email = user_info["email"]
     name = user_info.get("name", "")
     print('callback')
-
-    # # Upsert the User in our DB
-    user = db.query(User).filter_by(google_id=google_id).first()
-    if not user:
-        user = User(google_id=google_id, email=email, name=name)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    
+    user = insert_user(google_id, email, name)
 
     # generate a JWT so the frontend can call protected APIs
     expire = int(time.time() + JWT_EXPIRE_SECONDS)

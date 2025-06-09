@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from models import Base
 from sqlalchemy.ext.declarative import declarative_base
 
-from models import MovieSimilarity, Movie
+from models import MovieSimilarity, Movie, User, Rating
 load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -58,16 +58,42 @@ def insert_all_similarities(anchor_ids, neighbor_ids, raw_sims, co_counts, weigh
     session.bulk_save_objects(batch)
     session.commit()
     session.close()
-# insert_movies()
-# insert_all_similarities()
 
-# def reset_and_populate():
-#     session = SessionLocal()
-#     # truncate child table first, then parent
-#     session.execute(text("TRUNCATE TABLE movies CASCADE;"))
-#     session.commit()
-#     session.close()
 
-#     # repopulate both tables
-#     insert_movies()
-#     insert_all_similarities()
+def insert_user(google_id, email, name):
+    session = get_db()
+    user = session.query(User).filter_by(google_id=google_id).first()
+    if not user:
+        user = User(google_id=google_id, email=email, name=name)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    return user
+
+
+def insert_rating(user_id, movie_id, value):
+    session = get_db()
+    rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
+    if not rating:
+        rating = Rating(user_id=user_id, movie_id=movie_id, value=value)
+        session.add(rating)
+        session.commit()
+        session.refresh(rating)
+    return rating
+    
+
+
+
+
+
+
+def reset_and_populate():
+    session = SessionLocal()
+    # truncate child table first, then parent
+    session.execute(text("TRUNCATE TABLE movies CASCADE;"))
+    session.commit()
+    session.close()
+
+    # repopulate both tables
+    insert_movies()
+    insert_all_similarities()

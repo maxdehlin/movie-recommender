@@ -5,6 +5,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    PrimaryKeyConstraint
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -22,6 +23,8 @@ class Movie(Base):
         foreign_keys="[MovieSimilarity.movie_id]"
     )
 
+    ratings = relationship("Rating", back_populates="movie")
+
 
 class MovieSimilarity(Base):
     __tablename__ = "movie_similarities"
@@ -31,7 +34,7 @@ class MovieSimilarity(Base):
     co_count     = Column(Integer, nullable=False)
     weighted_sim = Column(Float,  nullable=False)
 
-    movie    = relationship(
+    movie = relationship(
         "Movie",
         foreign_keys=[movie_id],
         back_populates="neighbors"
@@ -52,3 +55,22 @@ class User(Base):
     google_id = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=True)
+
+    ratings = relationship("Rating", back_populates="user")
+
+class Rating(Base):
+    __tablename__ = 'ratings'
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    movie_id = Column(Integer, ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
+    value = Column(Float, nullable=False)
+
+
+    user = relationship("User", back_populates="rating")
+    movie = relationship("Movie", back_populates="rating")
+
+    __table_args__ = (
+        PrimaryKeyConstraint("user_id", "movie_id", name="pk_user_movie"),
+    )
+
+ 
