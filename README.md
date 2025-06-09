@@ -15,3 +15,9 @@ https://movie-recommender-fragrant-shape-7289.fly.dev/
 
 # start sql
 psql -U {user} -d movie_db
+
+
+
+# update sql tables with alembic
+alembic revision --autogenerate -m "name of change"
+alembic upgrade head

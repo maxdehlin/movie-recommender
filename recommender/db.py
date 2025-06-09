@@ -1,10 +1,12 @@
 import os
 from dotenv import load_dotenv
+import csv
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, String
 from sqlalchemy.orm import sessionmaker
 from models import Base
 from sqlalchemy.ext.declarative import declarative_base
+
 
 from models import MovieSimilarity, Movie, User, Rating
 load_dotenv()
@@ -34,7 +36,6 @@ def insert_movies(movies):
     session.bulk_save_objects(batch)
     session.commit()
     session.close()
-
 
 
 def insert_all_similarities(anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims):
@@ -80,8 +81,73 @@ def insert_rating(user_id, movie_id, value):
         session.commit()
         session.refresh(rating)
     return rating
-    
 
+
+def load_users_and_ratings(csv_path: str):
+    """
+    Load all users and ratings from a MovieLens-style CSV:
+      userId,movieId,rating,timestamp
+    Inserts:
+      - one User per distinct userId (with is_import=True)
+      - one Rating per row
+    """
+    session = get_db()
+    try:
+        user_ids = set()
+        ratings_data = []
+
+        with open(csv_path, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                uid = int(row["userId"])
+                user_ids.add(uid)
+                ratings_data.append({
+                    "user_id":   uid,
+                    "movie_id":  int(row["movieId"]),
+                    "value":     float(row["rating"]),
+                })
+
+        # 1) Bulk‐insert all users (with explicit IDs)
+        session.bulk_save_objects([
+            User(id=uid, is_import=True)
+            for uid in user_ids
+        ])
+        session.flush()  # push users so FK checks will pass
+
+        # 2) Bulk‐insert all ratings
+        session.bulk_insert_mappings(Rating, ratings_data)
+
+        # 3) (Optional) Fix users_id_seq so next autoincrement is > max(id)
+        session.execute(
+            "SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));"
+        )
+
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+def load_movies_from_csv(csv_path: str):
+    session = get_db()
+    try:
+        with open(csv_path, newlin="") as f:
+            reader = csv.DictReader(f)
+            objs = []
+            for row in reader:
+                objs.append(
+                    Movie(
+                        id=int(row["movieId"]),
+                        title=String(row["title"]),
+                        genres=String(row["genres"])
+                    )
+                )
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 
@@ -95,5 +161,5 @@ def reset_and_populate():
     session.close()
 
     # repopulate both tables
-    insert_movies()
-    insert_all_similarities()
+    # insert_movies()
+    # insert_all_similarities()

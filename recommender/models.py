@@ -5,7 +5,8 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
-    PrimaryKeyConstraint
+    PrimaryKeyConstraint,
+    Boolean
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -52,11 +53,15 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    google_id = Column(String, unique=True, index=True, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
+    google_id = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=True)
 
+    is_import = Column(Boolean, default=False, nullable=False)
+
     ratings = relationship("Rating", back_populates="user")
+
+
 
 class Rating(Base):
     __tablename__ = 'ratings'
@@ -64,6 +69,7 @@ class Rating(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     movie_id = Column(Integer, ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True)
     value = Column(Float, nullable=False)
+    timestamp = Column(Integer)
 
 
     user = relationship("User", back_populates="rating")
