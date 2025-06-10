@@ -13,8 +13,13 @@ fly deploy
 https://movie-recommender-fragrant-shape-7289.fly.dev/
 
 
-# start sql
+# start local sql
 psql -U {user} -d movie_db
+
+# start remote sql
+psql postgresql://$REMOTE_POSTGRES_USER:$REMOTE_POSTGRES_PASSWORD@localhost:15432/movie_recommender_fragrant_shape_7289
+
+
 
 
 
@@ -25,4 +30,3 @@ alembic upgrade head
 
 # attach app to database
 fly postgres attach movierec-db --app movie-recommender-fragrant-shape-7289
-

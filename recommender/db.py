@@ -77,83 +77,69 @@ def insert_rating(session, user_id, movie_id, value):
         session.refresh(rating)
     return rating
 
+# db.py
+def load_movies_from_csv(session, csv_path: str):
+    print("Loading movies")
+    with open(csv_path, newline="") as f:
+        reader = csv.DictReader(f)
+        batch = []
+        for i, row in enumerate(reader, 1):
+            if i % 100_000 == 0:
+                print(f"  {i} movies…")
+            batch.append(
+                Movie(
+                    id=int(row["movieId"]),
+                    title=row["title"],
+                    genres=row["genres"],
+                )
+            )
+        session.bulk_save_objects(batch)
+        session.commit()
+    print(f"Inserted {len(batch)} movies")
+
 
 def load_users_and_ratings(session, csv_path: str):
-    print('Loading users')
-    try:
-        # read CSV, collect all user IDs and rating rows
-        user_ids = set()
-        ratings_data = []
-        with open(csv_path, newline="") as f:
-            reader = csv.DictReader(f)
-            i = 0
-            for row in reader:
-                if i % 10000 == 0:
-                    print(i)
-                uid = int(row["userId"])
-                user_ids.add(uid)
-                ratings_data.append({
-                    "user_id":  uid,
-                    "movie_id": int(row["movieId"]),
-                    "value":    float(row["rating"]),
-                    "timestamp": int(row["timestamp"])
-                })
-                i += 1
+    print("Loading users & ratings")
+    user_ids = set()
+    ratings_data = []
+    with open(csv_path, newline="") as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader, 1):
+            if i % 10_000 == 0:
+                print(f"  {i} ratings…")
+            uid = int(row["userId"])
+            user_ids.add(uid)
+            ratings_data.append({
+                "user_id":  uid,
+                "movie_id": int(row["movieId"]),
+                "value":    float(row["rating"]),
+                "timestamp": int(row["timestamp"]),
+            })
 
-        # figure out which user IDs are *not* yet in the DB
-        existing = {
-            uid for (uid,) in
-            session.query(User.id)
-                   .filter(User.id.in_(user_ids))
-                   .all()
-        }
-        new_ids = user_ids - existing
+    # only insert new users
+    existing = {
+        uid for (uid,) in session.query(User.id)
+                                 .filter(User.id.in_(user_ids))
+                                 .all()
+    }
+    new_ids = user_ids - existing
+    session.bulk_save_objects([
+        User(id=uid, is_import=True)
+        for uid in new_ids
+    ])
+    session.flush()
 
-        # bulk‐insert only the new users
-        session.bulk_save_objects([
-            User(id=uid, is_import=True)
-            for uid in new_ids
-        ])
-        session.flush()  # make sure the FK checks will pass
+    # insert all ratings
+    session.bulk_insert_mappings(Rating, ratings_data)
+    session.commit()
 
-        # bulk‐insert all ratings (you can skip deduping here if you never rerun)
-        session.bulk_insert_mappings(Rating, ratings_data)
+    # fix the users sequence
+    session.execute(text(
+        "SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));"
+    ))
+    session.commit()
 
-        # advance the sequence so future auto‐ids don’t collide
-        session.execute(
-            text("SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));")
-        )
-
-        session.commit()
-    except:
-        session.rollback()
-        raise
-
-def load_movies_from_csv(session, csv_path: str):
-    print('Loading movies')
-    try:
-        with open(csv_path, newline="") as f:
-            reader = csv.DictReader(f)
-            objs = []
-            i = 0
-            for row in reader:
-                if i % 100000:
-                    print(i)
-                objs.append(
-                    Movie(
-                        id=int(row["movieId"]),
-                        title=String(row["title"]),
-                        genres=String(row["genres"])
-                    )
-                )
-                i += 1
-    except Exception:
-        session.rollback()
-        raise
-
-
-
-
+    print(f"Inserted {len(new_ids)} users and {len(ratings_data)} ratings")
 
 def reset_and_populate(session):
     # truncate child table first, then parent
