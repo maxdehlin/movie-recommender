@@ -30,3 +30,10 @@ alembic upgrade head
 
 # attach app to database
 fly postgres attach movierec-db --app movie-recommender-fragrant-shape-7289
+
+# proxy
+fly proxy 15432:5432 -a movierec-db
+
+# restart db
+fly machine list -a movierec-db
+fly machine restart {machine} --a movierec-db

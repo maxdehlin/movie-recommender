@@ -78,44 +78,47 @@ def insert_rating(session, user_id, movie_id, value):
     return rating
 
 # db.py
-def load_movies_from_csv(session, csv_path: str):
-    print("Loading movies")
+def load_movies_from_csv(session, csv_path):
+
+
+    movies_data = []
+    movie_ids = set()
     with open(csv_path, newline="") as f:
         reader = csv.DictReader(f)
-        batch = []
         for i, row in enumerate(reader, 1):
+            movie_id = int(row["movieId"])
+            movie_ids.add(movie_id)
+            movies_data.append({
+                "id": movie_id,
+                "title": row["title"],
+                "genres": row["genres"],
+            })
             if i % 100_000 == 0:
-                print(f"  {i} movies…")
-            batch.append(
-                Movie(
-                    id=int(row["movieId"]),
-                    title=row["title"],
-                    genres=row["genres"],
-                )
-            )
-        session.bulk_save_objects(batch)
-        session.commit()
-    print(f"Inserted {len(batch)} movies")
+                print(f"Read {i} movies...")
+
+    existing = {
+        mid for (mid,) in
+        session.query(Movie.id)
+               .filter(Movie.id.in_(movie_ids))
+               .all()
+    }
 
 
-def load_users_and_ratings(session, csv_path: str):
+    new_movies = [m for m in movies_data if m["id"] not in existing]
+    print(f"Inserting {len(new_movies)} new movies (skipped {len(movies_data) - len(new_movies)})")
+
+    session.bulk_insert_mappings(Movie, new_movies)
+    session.commit()
+
+
+def load_users(session, csv_path: str):
     print("Loading users & ratings")
     user_ids = set()
-    ratings_data = []
     with open(csv_path, newline="") as f:
         reader = csv.DictReader(f)
         for i, row in enumerate(reader, 1):
-            if i % 10_000 == 0:
-                print(f"  {i} ratings…")
             uid = int(row["userId"])
             user_ids.add(uid)
-            ratings_data.append({
-                "user_id":  uid,
-                "movie_id": int(row["movieId"]),
-                "value":    float(row["rating"]),
-                "timestamp": int(row["timestamp"]),
-            })
-
     # only insert new users
     existing = {
         uid for (uid,) in session.query(User.id)
@@ -129,17 +132,11 @@ def load_users_and_ratings(session, csv_path: str):
     ])
     session.flush()
 
-    # insert all ratings
-    session.bulk_insert_mappings(Rating, ratings_data)
-    session.commit()
-
     # fix the users sequence
     session.execute(text(
         "SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));"
     ))
     session.commit()
-
-    print(f"Inserted {len(new_ids)} users and {len(ratings_data)} ratings")
 
 def reset_and_populate(session):
     # truncate child table first, then parent
