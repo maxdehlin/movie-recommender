@@ -21,3 +21,8 @@ psql -U {user} -d movie_db
 # update sql tables with alembic
 alembic revision --autogenerate -m "name of change"
 alembic upgrade head
+
+
+# attach app to database
+fly postgres attach movierec-db --app movie-recommender-fragrant-shape-7289
+

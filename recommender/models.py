@@ -72,8 +72,8 @@ class Rating(Base):
     timestamp = Column(Integer)
 
 
-    user = relationship("User", back_populates="rating")
-    movie = relationship("Movie", back_populates="rating")
+    user = relationship("User", back_populates="ratings")
+    movie = relationship("Movie", back_populates="ratings")
 
     __table_args__ = (
         PrimaryKeyConstraint("user_id", "movie_id", name="pk_user_movie"),

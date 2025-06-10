@@ -17,6 +17,9 @@ config = Config(".env")
 client_id = os.getenv("DEV_GOOGLE_CLIENT_ID")
 client_secret = os.getenv("DEV_GOOGLE_CLIENT_SECRET")
 
+
+
+
 load_dotenv()
 oauth = OAuth(config)
 oauth.register(

@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import csv
 
-from sqlalchemy import create_engine, String
+from sqlalchemy import create_engine, String, text
 from sqlalchemy.orm import sessionmaker
 from models import Base
 from sqlalchemy.ext.declarative import declarative_base
@@ -13,22 +13,21 @@ load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
+# factory that gives a SessionLocal for any URL
+def make_session_factory(db_url: str):
+    engine = create_engine(db_url, echo=True)
+    Base.metadata.create_all(bind=engine)
+    return sessionmaker(bind=engine)
 
-url = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:5432/movie_db"
-engine = create_engine(url)
-SessionLocal = sessionmaker(bind=engine)
-Base.metadata.create_all(bind=engine)
+# retrieves data
+# def get_db():
+#     db = SessionLocal()
+#     try:
+#         yield db
+#     finally:
+#         db.close()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        return db
-    finally:
-        db.close()
-
-
-def insert_movies(movies):
-    session = SessionLocal()
+def insert_movies(session, movies):
     batch = [
         Movie(id=row.movieId, title=row.title, genres=row.genres)
         for row in movies.itertuples()
@@ -38,8 +37,7 @@ def insert_movies(movies):
     session.close()
 
 
-def insert_all_similarities(anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims):
-    session = SessionLocal()
+def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims):
     batch = []
     # anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
     for (a_id, n_id, r_sim, c_cnt, w_sim) in zip(
@@ -58,11 +56,9 @@ def insert_all_similarities(anchor_ids, neighbor_ids, raw_sims, co_counts, weigh
     # Bulk‐save
     session.bulk_save_objects(batch)
     session.commit()
-    session.close()
 
 
-def insert_user(google_id, email, name):
-    session = get_db()
+def insert_user(session, google_id, email, name):
     user = session.query(User).filter_by(google_id=google_id).first()
     if not user:
         user = User(google_id=google_id, email=email, name=name)
@@ -72,8 +68,7 @@ def insert_user(google_id, email, name):
     return user
 
 
-def insert_rating(user_id, movie_id, value):
-    session = get_db()
+def insert_rating(session, user_id, movie_id, value):
     rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
     if not rating:
         rating = Rating(user_id=user_id, movie_id=movie_id, value=value)
@@ -83,59 +78,67 @@ def insert_rating(user_id, movie_id, value):
     return rating
 
 
-def load_users_and_ratings(csv_path: str):
-    """
-    Load all users and ratings from a MovieLens-style CSV:
-      userId,movieId,rating,timestamp
-    Inserts:
-      - one User per distinct userId (with is_import=True)
-      - one Rating per row
-    """
-    session = get_db()
+def load_users_and_ratings(session, csv_path: str):
+    print('Loading users')
     try:
+        # read CSV, collect all user IDs and rating rows
         user_ids = set()
         ratings_data = []
-
         with open(csv_path, newline="") as f:
             reader = csv.DictReader(f)
+            i = 0
             for row in reader:
+                if i % 10000 == 0:
+                    print(i)
                 uid = int(row["userId"])
                 user_ids.add(uid)
                 ratings_data.append({
-                    "user_id":   uid,
-                    "movie_id":  int(row["movieId"]),
-                    "value":     float(row["rating"]),
+                    "user_id":  uid,
+                    "movie_id": int(row["movieId"]),
+                    "value":    float(row["rating"]),
+                    "timestamp": int(row["timestamp"])
                 })
+                i += 1
 
-        # 1) Bulk‐insert all users (with explicit IDs)
+        # figure out which user IDs are *not* yet in the DB
+        existing = {
+            uid for (uid,) in
+            session.query(User.id)
+                   .filter(User.id.in_(user_ids))
+                   .all()
+        }
+        new_ids = user_ids - existing
+
+        # bulk‐insert only the new users
         session.bulk_save_objects([
             User(id=uid, is_import=True)
-            for uid in user_ids
+            for uid in new_ids
         ])
-        session.flush()  # push users so FK checks will pass
+        session.flush()  # make sure the FK checks will pass
 
-        # 2) Bulk‐insert all ratings
+        # bulk‐insert all ratings (you can skip deduping here if you never rerun)
         session.bulk_insert_mappings(Rating, ratings_data)
 
-        # 3) (Optional) Fix users_id_seq so next autoincrement is > max(id)
+        # advance the sequence so future auto‐ids don’t collide
         session.execute(
-            "SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));"
+            text("SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));")
         )
 
         session.commit()
     except:
         session.rollback()
         raise
-    finally:
-        session.close()
 
-def load_movies_from_csv(csv_path: str):
-    session = get_db()
+def load_movies_from_csv(session, csv_path: str):
+    print('Loading movies')
     try:
-        with open(csv_path, newlin="") as f:
+        with open(csv_path, newline="") as f:
             reader = csv.DictReader(f)
             objs = []
+            i = 0
             for row in reader:
+                if i % 100000:
+                    print(i)
                 objs.append(
                     Movie(
                         id=int(row["movieId"]),
@@ -143,23 +146,16 @@ def load_movies_from_csv(csv_path: str):
                         genres=String(row["genres"])
                     )
                 )
+                i += 1
     except Exception:
         session.rollback()
         raise
-    finally:
-        session.close()
 
 
 
 
 
-def reset_and_populate():
-    session = SessionLocal()
+def reset_and_populate(session):
     # truncate child table first, then parent
     session.execute(text("TRUNCATE TABLE movies CASCADE;"))
     session.commit()
-    session.close()
-
-    # repopulate both tables
-    # insert_movies()
-    # insert_all_similarities()

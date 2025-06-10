@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from sklearn.neighbors import NearestNeighbors
 import os
 from models import MovieSimilarity, Movie
-from db import get_db
 from sqlalchemy import or_
 import heapq
 load_dotenv()
@@ -126,8 +125,7 @@ def calculate_similarities():
     return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
 
 # query database to find movies with highest similarity movies for a given movie id
-def topk_movies(movie_id, k):
-    session = get_db()
+def topk_movies(session, movie_id, k):
     rows = (
         session.query(MovieSimilarity)
             .filter(
