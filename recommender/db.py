@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import csv
 
-from sqlalchemy import create_engine, String, text
+from sqlalchemy import create_engine, String, text, and_
 from sqlalchemy.orm import sessionmaker
 from models import Base
 from sqlalchemy.ext.declarative import declarative_base
@@ -79,8 +79,6 @@ def insert_rating(session, user_id, movie_id, value):
 
 # db.py
 def load_movies_from_csv(session, csv_path):
-
-
     movies_data = []
     movie_ids = set()
     with open(csv_path, newline="") as f:
@@ -111,32 +109,7 @@ def load_movies_from_csv(session, csv_path):
     session.commit()
 
 
-def load_users(session, csv_path: str):
-    print("Loading users & ratings")
-    user_ids = set()
-    with open(csv_path, newline="") as f:
-        reader = csv.DictReader(f)
-        for i, row in enumerate(reader, 1):
-            uid = int(row["userId"])
-            user_ids.add(uid)
-    # only insert new users
-    existing = {
-        uid for (uid,) in session.query(User.id)
-                                 .filter(User.id.in_(user_ids))
-                                 .all()
-    }
-    new_ids = user_ids - existing
-    session.bulk_save_objects([
-        User(id=uid, is_import=True)
-        for uid in new_ids
-    ])
-    session.flush()
 
-    # fix the users sequence
-    session.execute(text(
-        "SELECT setval(pg_get_serial_sequence('users','id'), (SELECT MAX(id) FROM users));"
-    ))
-    session.commit()
 
 def reset_and_populate(session):
     # truncate child table first, then parent

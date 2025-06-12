@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from jose import jwt
 from recommender.db import get_db, insert_user
 from recommender.models import User
+from recommender.recommender import verify_movie
 import schemas
 # Load environment variables from a “.env” file 
 config = Config(".env")
@@ -80,20 +81,21 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/")
-async def root():
-    return "Move Recommendations!"
+# @app.get("/")
+# async def root():
+#     return "Move Recommendations!"
 
 
-@app.get("/items")
-async def items():
-    return {"items": "Here are some movies you might like!"}
+# @app.get("/items")
+# async def items():
+#     return {"items": "Here are some movies you might like!"}
 
 
 @app.get("/verify_movie")
-async def create_profile(
-    in_profile: schemas.ProfileCreate
+async def verify_movie(
+    movie
 ):
+    verify_movie(movie)
     return {"success": True, "detail": "Profile created successfully."}
 
 

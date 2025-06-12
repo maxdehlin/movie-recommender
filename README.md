@@ -1,5 +1,9 @@
 # movie-recommender
 
+
+# TODO:
+Update users to only include users which have accounts for databasing.
+
 # Run locally
 uvicorn app:app --reload --host 127.0.0.1 --port 8000
 <!-- fastapi dev app.py -->

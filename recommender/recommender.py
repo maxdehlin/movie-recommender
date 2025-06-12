@@ -7,6 +7,20 @@ import os
 from models import MovieSimilarity, Movie
 from sqlalchemy import or_
 import heapq
+from db import make_session_factory
+
+url = os.getenv("LOCAL_DATABASE_URL")
+if url.startswith("postgres://"):
+    url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+SessionLocal = make_session_factory(url)
+
+
+
+
+
+session = SessionLocal()
+
 load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -22,7 +36,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # point to the “data” folder inside it
 data_folder = os.path.join(BASE_DIR, folder)
-print(data_folder)
+# print(data_folder)
 
 # now these will work no matter where you run the script from
 # ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
@@ -157,7 +171,7 @@ def find_highly_rated_movies(seed_movies):
 
 
 # find recommended movies from a set of seed movies
-def find_recommended_movies(seed_ratings):
+def find_recommended_movies(session, seed_ratings):
     seed_movies = set([x[0] for x in seed_ratings])
     
     rated_movies = find_highly_rated_movies(seed_ratings)
@@ -166,7 +180,7 @@ def find_recommended_movies(seed_ratings):
     k_recommended = 10
 
     for i in range(len(rated_movies)):
-        list = topk_movies(rated_movies[i], k_recommended)
+        list = topk_movies(session, rated_movies[i], k_recommended)
         lists.append(list)
         elem = list[0]
         score = -elem.weighted_sim # negative score so its descending order
@@ -194,12 +208,26 @@ def find_recommended_movies(seed_ratings):
 
 # recommends k movies based on given titles
 # expect movie_ratings = [(movie_title, rating), ...]
-def recommend_movies(movie_ratings, k):
+def recommend_movies(session, movie_ratings, k):
     seed_movies = [(movie_inv_titles[x[0]], x[1]) for x in movie_ratings]
-    rec_movie_ids = find_recommended_movies(seed_movies)[:k]
+    rec_movie_ids = find_recommended_movies(session, seed_movies)[:k]
     rec_movie_titles = [movie_titles[x] for x in rec_movie_ids]
     return rec_movie_titles
 
+from sqlalchemy import select, exists
+
+
+
+
+def verify_movie(session, title):
+    movie_id = movie_inv_titles[title]
+    exists_query = select(exists().where(Movie.id == movie_id))
+    exists_ = session.execute(exists_query).scalar()
+    if exists_:
+        print("Movie exists")
+    else:
+        print("Movie does not exist")
+    return exists_
 
 
 
@@ -228,4 +256,5 @@ seed_movies = [(1, 5.0), (2, 3.5), (3, 5.0),(4, 2.5), (5, 4.0),
     (101, 3.0), (102, 4.0), (103, 4.0), (104, 3.5), (105, 2.5),]
 
 rated_movies = [('Toy Story (1995)', 5.0), ('Jumanji (1995)', 3.5), ('Grumpier Old Men (1995)', 5.0)]
-print(recommend_movies(rated_movies, 10))
+# print(recommend_movies(session, rated_movies, 10))
+print(verify_movie(session, 'Toy Story (1995)'))
