@@ -208,16 +208,12 @@ def find_recommended_movies(session, seed_ratings):
 
 # recommends k movies based on given titles
 # expect movie_ratings = [(movie_title, rating), ...]
-def recommend_movies(session, movie_ratings, k):
-    seed_movies = [(movie_inv_titles[x[0]], x[1]) for x in movie_ratings]
+def recommend_movies(movie_ratings, k=5):
+    print([x.title for x in movie_ratings])
+    seed_movies = [(movie_inv_titles[x.title], x.rating) for x in movie_ratings]
     rec_movie_ids = find_recommended_movies(session, seed_movies)[:k]
     rec_movie_titles = [movie_titles[x] for x in rec_movie_ids]
     return rec_movie_titles
-
-from sqlalchemy import select, exists
-
-
-
 
 def verify_movie_in_db(title):
     exists = title in movie_inv_titles

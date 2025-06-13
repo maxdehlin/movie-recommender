@@ -2,6 +2,7 @@ import time
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
@@ -10,8 +11,8 @@ from sqlalchemy.orm import Session
 from jose import jwt
 from recommender.db import insert_user
 from recommender.models import User
-from recommender.recommender import verify_movie_in_db
-import schemas
+from recommender.recommender import verify_movie_in_db, recommend_movies
+from schemas import Seeds
 # Load environment variables from a “.env” file 
 config = Config(".env")
 
@@ -36,6 +37,15 @@ JWT_SECRET = config("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_SECONDS = 3600 
 app = FastAPI()
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(
     SessionMiddleware,
@@ -83,7 +93,7 @@ async def google_callback(request: Request):
 
 @app.get("/verify_movie")
 async def verify_movie(
-    movie
+    movie: str
 ):
     # print(movie)
     result = verify_movie_in_db(movie)
@@ -92,6 +102,15 @@ async def verify_movie(
     else:
         message = "Invalid movie"
     return {"success": result, "detail": message}
+
+
+
+@app.post("/recommend")
+async def get_recommendations(seeds: Seeds):
+    print(seeds)
+    message = recommend_movies(seeds.seeds)
+    success = bool(message)
+    return {"success": success, "detail": message}
 
 
 # setter: Create profile

@@ -12,3 +12,10 @@ class ProfileRead(BaseModel):
 
     class Config:
         orm_mode = True
+
+class Seed(BaseModel):
+    title: str
+    rating: float
+
+class Seeds(BaseModel):
+    seeds: list[Seed]
