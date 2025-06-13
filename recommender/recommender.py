@@ -4,10 +4,10 @@ from scipy.sparse import csr_matrix
 from dotenv import load_dotenv
 from sklearn.neighbors import NearestNeighbors
 import os
-from models import MovieSimilarity, Movie
+from .models import MovieSimilarity, Movie
 from sqlalchemy import or_
 import heapq
-from db import make_session_factory
+from .db import make_session_factory
 
 url = os.getenv("LOCAL_DATABASE_URL")
 if url.startswith("postgres://"):
@@ -219,15 +219,13 @@ from sqlalchemy import select, exists
 
 
 
-def verify_movie(session, title):
-    movie_id = movie_inv_titles[title]
-    exists_query = select(exists().where(Movie.id == movie_id))
-    exists_ = session.execute(exists_query).scalar()
-    if exists_:
+def verify_movie_in_db(title):
+    exists = title in movie_inv_titles
+    if exists:
         print("Movie exists")
     else:
         print("Movie does not exist")
-    return exists_
+    return exists
 
 
 
@@ -257,4 +255,3 @@ seed_movies = [(1, 5.0), (2, 3.5), (3, 5.0),(4, 2.5), (5, 4.0),
 
 rated_movies = [('Toy Story (1995)', 5.0), ('Jumanji (1995)', 3.5), ('Grumpier Old Men (1995)', 5.0)]
 # print(recommend_movies(session, rated_movies, 10))
-print(verify_movie(session, 'Toy Story (1995)'))

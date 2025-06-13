@@ -8,9 +8,9 @@ from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from jose import jwt
-from recommender.db import get_db, insert_user
+from recommender.db import insert_user
 from recommender.models import User
-from recommender.recommender import verify_movie
+from recommender.recommender import verify_movie_in_db
 import schemas
 # Load environment variables from a “.env” file 
 config = Config(".env")
@@ -52,7 +52,7 @@ async def google_login(request: Request):
 
 
 @app.get("/auth/google/callback")
-async def google_callback(request: Request, db: Session = Depends(get_db)):
+async def google_callback(request: Request):
     """
     Google will redirect back here with a “code” query param.
     We exchange it for tokens, verify the ID token, upsert the User,
@@ -81,22 +81,17 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# @app.get("/")
-# async def root():
-#     return "Move Recommendations!"
-
-
-# @app.get("/items")
-# async def items():
-#     return {"items": "Here are some movies you might like!"}
-
-
 @app.get("/verify_movie")
 async def verify_movie(
     movie
 ):
-    verify_movie(movie)
-    return {"success": True, "detail": "Profile created successfully."}
+    # print(movie)
+    result = verify_movie_in_db(movie)
+    if result:
+        message = "Movie verified"
+    else:
+        message = "Invalid movie"
+    return {"success": result, "detail": message}
 
 
 # setter: Create profile

@@ -4,11 +4,8 @@ import csv
 
 from sqlalchemy import create_engine, String, text, and_
 from sqlalchemy.orm import sessionmaker
-from models import Base
+from recommender.models import Base, MovieSimilarity, Movie, User, Rating
 from sqlalchemy.ext.declarative import declarative_base
-
-
-from models import MovieSimilarity, Movie, User, Rating
 load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
