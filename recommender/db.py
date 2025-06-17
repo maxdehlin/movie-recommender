@@ -16,14 +16,6 @@ def make_session_factory(db_url: str):
     Base.metadata.create_all(bind=engine)
     return sessionmaker(bind=engine)
 
-# retrieves data
-# def get_db():
-#     db = SessionLocal()
-#     try:
-#         yield db
-#     finally:
-#         db.close()
-
 def insert_movies(session, movies):
     batch = [
         Movie(id=row.movieId, title=row.title, genres=row.genres)

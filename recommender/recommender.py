@@ -3,22 +3,19 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from dotenv import load_dotenv
 from sklearn.neighbors import NearestNeighbors
-import os
-from .models import MovieSimilarity, Movie
+
 from sqlalchemy import or_
 import heapq
-from .db import make_session_factory
+import os
+from recommender.models import MovieSimilarity, Movie
+from recommender.db import make_session_factory
+
 
 url = os.getenv("LOCAL_DATABASE_URL")
 if url.startswith("postgres://"):
     url = url.replace("postgres://", "postgresql+psycopg2://", 1)
 
 SessionLocal = make_session_factory(url)
-
-
-
-
-
 session = SessionLocal()
 
 load_dotenv()
@@ -249,5 +246,5 @@ seed_movies = [(1, 5.0), (2, 3.5), (3, 5.0),(4, 2.5), (5, 4.0),
     (96, 3.0), (97, 2.0), (98, 2.5), (99, 5.0), (100, 5.0),
     (101, 3.0), (102, 4.0), (103, 4.0), (104, 3.5), (105, 2.5),]
 
-rated_movies = [('Toy Story (1995)', 5.0), ('Jumanji (1995)', 3.5), ('Grumpier Old Men (1995)', 5.0)]
-# print(recommend_movies(session, rated_movies, 10))
+
+

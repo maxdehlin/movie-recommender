@@ -9,18 +9,18 @@ from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from jose import jwt
-from recommender.db import insert_user
+from recommender.db import insert_user, make_session_factory
 from recommender.models import User
 from recommender.recommender import verify_movie_in_db, recommend_movies
 from schemas import Seeds
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
 # Load environment variables from a “.env” file 
 config = Config(".env")
 
 client_id = os.getenv("DEV_GOOGLE_CLIENT_ID")
 client_secret = os.getenv("DEV_GOOGLE_CLIENT_SECRET")
-
-
-
 
 load_dotenv()
 oauth = OAuth(config)
@@ -52,6 +52,27 @@ app.add_middleware(
     secret_key=os.getenv("SESSION_SECRET") or "some‐random-string",
 )
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+url = os.getenv("LOCAL_DATABASE_URL")
+if url.startswith("postgres://"):
+    url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+SessionLocal = make_session_factory(url)
+session = SessionLocal()
+
+def verify_jwt(token: str = Depends(oauth2_scheme)):
+    print('token', token)
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid JWT payload")
+        return user_id
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    
+
 @app.get("/auth/google/login")
 async def google_login(request: Request):
     """
@@ -59,6 +80,10 @@ async def google_login(request: Request):
     """
     redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
+
+from fastapi.responses import RedirectResponse
+
+FRONTEND_URL = "http://localhost:5173"
 
 
 @app.get("/auth/google/callback")
@@ -78,7 +103,7 @@ async def google_callback(request: Request):
     name = user_info.get("name", "")
     print('callback')
     
-    user = insert_user(google_id, email, name)
+    user = insert_user(session, google_id, email, name)
 
     # generate a JWT so the frontend can call protected APIs
     expire = int(time.time() + JWT_EXPIRE_SECONDS)
@@ -87,13 +112,14 @@ async def google_callback(request: Request):
         "exp": expire,
     }
     access_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-    return {"access_token": access_token, "token_type": "bearer"}
+    redirect_url = f"{FRONTEND_URL}/?token={access_token}"
+    return RedirectResponse(redirect_url)
 
 
 @app.get("/verify_movie")
 async def verify_movie(
-    movie: str
+    movie: str,
+    user_id: str = Depends(verify_jwt)
 ):
     # print(movie)
     result = verify_movie_in_db(movie)
@@ -106,9 +132,12 @@ async def verify_movie(
 
 
 @app.post("/recommend")
-async def get_recommendations(seeds: Seeds):
-    print(seeds)
+async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
+    print('seeds', seeds)
+    # recommend movies based on seeds
     message = recommend_movies(seeds.seeds)
+
+    # save seeds
     success = bool(message)
     return {"success": success, "detail": message}
 
