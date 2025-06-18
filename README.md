@@ -41,3 +41,9 @@ fly proxy 15432:5432 -a movierec-db
 # restart db
 fly machine list -a movierec-db
 fly machine restart {machine} --a movierec-db
+
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip-compile requirements.in
+pip install -r requirements.txt

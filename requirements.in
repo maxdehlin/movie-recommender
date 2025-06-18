@@ -5,3 +5,8 @@ scikit-learn
 pandas
 # alembic
 authlib
+httpx
+sqlalchemy
+psycopg2-binary
+itsdangerous
+python-jose

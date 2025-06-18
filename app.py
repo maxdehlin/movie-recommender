@@ -54,9 +54,12 @@ app.add_middleware(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-url = os.getenv("LOCAL_DATABASE_URL")
+url = os.getenv("DATABASE_URL")
+if not url:
+    raise RuntimeError("DATABASE_URL environment variable not set")
 if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+    url = url.replace("postgres://", "postgresql://", 1)
+
 
 SessionLocal = make_session_factory(url)
 session = SessionLocal()
