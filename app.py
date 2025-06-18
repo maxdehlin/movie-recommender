@@ -17,12 +17,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 # Load environment variables from a “.env” file 
-config = Config(".env")
+config = Config(environ=os.environ)
 
 client_id = os.getenv("DEV_GOOGLE_CLIENT_ID")
 client_secret = os.getenv("DEV_GOOGLE_CLIENT_SECRET")
 
-load_dotenv()
+# load_dotenv()
 oauth = OAuth(config)
 oauth.register(
     name="google",
@@ -55,6 +55,7 @@ app.add_middleware(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 url = os.getenv("DATABASE_URL")
+print("DATABASE_URL")
 if not url:
     raise RuntimeError("DATABASE_URL environment variable not set")
 if url.startswith("postgres://"):
