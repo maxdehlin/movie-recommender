@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from jose import jwt
 from recommender.db import insert_user, make_session_factory
 from recommender.models import User
-from recommender.recommender import verify_movie_in_db, recommend_movies
+from recommender.recommender import MovieRecommender
 from schemas import Seeds
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -21,6 +21,8 @@ config = Config(environ=os.environ)
 
 client_id = os.getenv("DEV_GOOGLE_CLIENT_ID")
 client_secret = os.getenv("DEV_GOOGLE_CLIENT_SECRET")
+
+recommender = MovieRecommender()
 
 # load_dotenv()
 oauth = OAuth(config)
@@ -128,7 +130,7 @@ async def verify_movie(
     user_id: str = Depends(verify_jwt)
 ):
     # print(movie)
-    result = verify_movie_in_db(movie)
+    result = recommender.verify_movie_in_db(movie)
     if result:
         message = "Movie verified"
     else:
@@ -141,7 +143,7 @@ async def verify_movie(
 async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
     print('seeds', seeds)
     # recommend movies based on seeds
-    message = recommend_movies(seeds.seeds)
+    message = recommender.recommend_movies(seeds.seeds)
 
     # save seeds
     success = bool(message)

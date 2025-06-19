@@ -12,11 +12,6 @@ from recommender.db import make_session_factory
 
 
 url = os.getenv("DATABASE_URL")
-if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql+psycopg2://", 1)
-
-SessionLocal = make_session_factory(url)
-session = SessionLocal()
 
 # load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
@@ -25,198 +20,195 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 small = 'data/ml-latest-small'
 big = 'data/ml-32m'
 
-folder = big
 
+class MovieRecommender:
+    def __init__(self, db_url=None, folder='data/ml-32m'):
+        self.db_url = db_url or os.getenv('DATABASE_URL')
+        if not self.db_url:
+            raise RuntimeError("DATABASE_URL not set")
+        if self.db_url.startswith("postgres://"):
+            self.db_url = self.db_url.replace("postgres://", "postgresql+psycopg2://", 1)
 
-# get the directory where this .py file lives
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-data_folder = os.path.join(BASE_DIR, folder)
+        self.session = make_session_factory(self.db_url)()
+        self.folder = folder
+        self.ratings = None
+        self.movies = None
 
-# ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
-movies  = pd.read_csv(os.path.join(data_folder, "movies.csv"))
+        self.movie_titles = {}
+        self.movie_inv_titles = {}
 
-ratings = pd.DataFrame()
-user_mapper = {}
-movie_mapper = {}
-user_inv_mapper = {}
-movie_inv_mapper = {}
-movie_titles = dict(zip(movies['movieId'], movies['title']))
-movie_inv_titles = dict(zip(movies['title'], movies['movieId']))
-
-def import_data(folder):
+        self.create_mappings()
     
+    def import_data(self, folder):
+        # get the directory where this .py file lives
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        data_folder = os.path.join(BASE_DIR, folder)
+        ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
+        movies  = pd.read_csv(os.path.join(data_folder, "movies.csv"))
 
+    def create_mappings(self):
+        movies = self.session.query(Movie).all()
+        movie_titles = {movie.id: movie.title for movie in movies}
+        movie_titles_inv = {movie.title: movie.id for movie in movies}
 
+        
+    # Generates a sparse utility matrix
+    def create_X(self, df):
+        M = df['userId'].nunique()
+        N = df['movieId'].nunique()
 
+        user_mapper = dict(zip(np.unique(df["userId"]), list(range(M))))
+        movie_mapper = dict(zip(np.unique(df["movieId"]), list(range(N))))
+        
+        user_inv_mapper = dict(zip(list(range(M)), np.unique(df["userId"])))
+        movie_inv_mapper = dict(zip(list(range(N)), np.unique(df["movieId"])))
+        
+        user_index = [user_mapper[i] for i in df['userId']]
+        item_index = [movie_mapper[i] for i in df['movieId']]
 
-# Generates a sparse utility matrix
-def create_X(df):
-    """
-    Args:
-        df: pandas dataframe containing 3 columns (userId, movieId, rating)
-    
-    Returns:
-        X: sparse matrix
-        user_mapper: dict that maps user id's to user indices
-        user_inv_mapper: dict that maps user indices to user id's
-        movie_mapper: dict that maps movie id's to movie indices
-        movie_inv_mapper: dict that maps movie indices to movie id's
-    """
-    M = df['userId'].nunique()
-    N = df['movieId'].nunique()
+        X = csr_matrix((df["rating"], (user_index,item_index)), shape=(M,N))
+        
+        return X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper
 
-    user_mapper = dict(zip(np.unique(df["userId"]), list(range(M))))
-    movie_mapper = dict(zip(np.unique(df["movieId"]), list(range(N))))
-    
-    user_inv_mapper = dict(zip(list(range(M)), np.unique(df["userId"])))
-    movie_inv_mapper = dict(zip(list(range(N)), np.unique(df["movieId"])))
-    
-    user_index = [user_mapper[i] for i in df['userId']]
-    item_index = [movie_mapper[i] for i in df['movieId']]
+    # calculate similarities for all pairs of movies
+    def calculate_similarities(self):
+        X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = self.create_X(ratings)
+        movie_titles = dict(zip(self.movies['movieId'], self.movies['title']))
 
-    X = csr_matrix((df["rating"], (user_index,item_index)), shape=(M,N))
-    
-    return X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper
+        X_csc = X.tocsc()  # shape = (n_users, n_items)
 
-# calculate similarities for all pairs of movies
-def calculate_similarities():
-    X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = create_X(ratings)
-    movie_titles = dict(zip(movies['movieId'], movies['title']))
+        n_items = X_csc.shape[1]
+        # supports[i] = set of user‐indices who rated item i
+        supports = []
+        for i in range(n_items):
+            # nonzero()[0] gives the row‐indices of nonzero entries in column i
+            users_who_rated_i = set(X_csc[:, i].nonzero()[0])
+            supports.append(users_who_rated_i)
 
-    X_csc = X.tocsc()  # shape = (n_users, n_items)
+        # fit NearestNeighbors on the (n_items × n_users) transpose:
+        item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
 
-    n_items = X_csc.shape[1]
-    # supports[i] = set of user‐indices who rated item i
-    supports = []
-    for i in range(n_items):
-        # nonzero()[0] gives the row‐indices of nonzero entries in column i
-        users_who_rated_i = set(X_csc[:, i].nonzero()[0])
-        supports.append(users_who_rated_i)
+        K = 15
+        nn = NearestNeighbors(
+            n_neighbors=K + 1,
+            metric="cosine",
+            algorithm="brute",
+            n_jobs=-1,
+        )
+        nn.fit(item_features)
 
-    # fit NearestNeighbors on the (n_items × n_users) transpose:
-    item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
+        distances, indices = nn.kneighbors(item_features, return_distance=True)
 
-    K = 15
-    nn = NearestNeighbors(
-        n_neighbors=K + 1,
-        metric="cosine",
-        algorithm="brute",
-        n_jobs=-1,
-    )
-    nn.fit(item_features)
+        alpha = 10  # shrinkage parameter
+        anchor_ids = []
+        neighbor_ids = []
+        raw_sims   = []
+        co_counts  = []
+        weighted_sims = []
 
-    distances, indices = nn.kneighbors(item_features, return_distance=True)
+        for i in range(n_items):
+            anchor_id = movie_inv_mapper[i]
+            for rank in range(1, K+1):
+                j = indices[i][rank]
+                neighbor_id = movie_inv_mapper[j]
 
-    alpha = 10  # shrinkage parameter
-    anchor_ids = []
-    neighbor_ids = []
-    raw_sims   = []
-    co_counts  = []
-    weighted_sims = []
+                if anchor_id < neighbor_id:
+                    raw_sim = 1.0 - distances[i][rank]
+                    co_cnt  = len(supports[i] & supports[j])
+                    shrink  = co_cnt / (co_cnt + alpha)
+                    w_sim   = raw_sim * shrink
 
-    for i in range(n_items):
-        anchor_id = movie_inv_mapper[i]
-        for rank in range(1, K+1):
-            j = indices[i][rank]
-            neighbor_id = movie_inv_mapper[j]
+                    anchor_ids.append(int(anchor_id))
+                    neighbor_ids.append(int(neighbor_id))
+                    raw_sims.append(float(raw_sim))
+                    co_counts.append(co_cnt)
+                    weighted_sims.append(float(w_sim))
+        return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
 
-            if anchor_id < neighbor_id:
-                raw_sim = 1.0 - distances[i][rank]
-                co_cnt  = len(supports[i] & supports[j])
-                shrink  = co_cnt / (co_cnt + alpha)
-                w_sim   = raw_sim * shrink
-
-                anchor_ids.append(int(anchor_id))
-                neighbor_ids.append(int(neighbor_id))
-                raw_sims.append(float(raw_sim))
-                co_counts.append(co_cnt)
-                weighted_sims.append(float(w_sim))
-    return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
-
-# query database to find movies with highest similarity movies for a given movie id
-def topk_movies(session, movie_id, k):
-    rows = (
-        session.query(MovieSimilarity)
-            .filter(
-                or_(
-                    MovieSimilarity.movie_id   == movie_id,
-                    MovieSimilarity.neighbor_id == movie_id
+    # query database to find movies with highest similarity movies for a given movie id
+    def topk_movies(self, movie_id, k):
+        rows = (
+            self.session.query(MovieSimilarity)
+                .filter(
+                    or_(
+                        MovieSimilarity.movie_id   == movie_id,
+                        MovieSimilarity.neighbor_id == movie_id
+                    )
+                    
                 )
-                
-            )
-            .order_by(MovieSimilarity.weighted_sim.desc())
-            .all()
-    )
-    session.close()
-    return rows[:k]
+                .order_by(MovieSimilarity.weighted_sim.desc())
+                .all()
+        )
+        self.session.close()
+        return rows[:k]
 
-# find highest rated movies from a set of rated seed movies
-def find_highly_rated_movies(seed_movies):
-    minimum_seed_count = 3
-    high_rating_threshold = 4.0
-    sorted_movies = sorted(seed_movies, key=lambda x: x[1], reverse=True)
-    output = []
-    for i in range(len(sorted_movies)):
-        movie = sorted_movies[i]
-        if movie[1] < high_rating_threshold and len(output) > minimum_seed_count:
-            break
-        output.append(movie[0])
-    return output
+    # find highest rated movies from a set of rated seed movies
+    def find_highly_rated_movies(self, seed_movies):
+        minimum_seed_count = 3
+        high_rating_threshold = 4.0
+        sorted_movies = sorted(seed_movies, key=lambda x: x[1], reverse=True)
+        output = []
+        for i in range(len(sorted_movies)):
+            movie = sorted_movies[i]
+            if movie[1] < high_rating_threshold and len(output) > minimum_seed_count:
+                break
+            output.append(movie[0])
+        return output
 
 
 
-# find recommended movies from a set of seed movies
-def find_recommended_movies(session, seed_ratings):
-    seed_movies = set([x[0] for x in seed_ratings])
-    
-    rated_movies = find_highly_rated_movies(seed_ratings)
-    heap = []
-    lists = []
-    k_recommended = 10
+    # find recommended movies from a set of seed movies
+    def find_recommended_movies(self, seed_ratings):
+        seed_movies = set([x[0] for x in seed_ratings])
+        
+        rated_movies = self.find_highly_rated_movies(seed_ratings)
+        heap = []
+        lists = []
+        k_recommended = 10
 
-    for i in range(len(rated_movies)):
-        list = topk_movies(session, rated_movies[i], k_recommended)
-        lists.append(list)
-        elem = list[0]
-        score = -elem.weighted_sim # negative score so its descending order
-        heap.append((score, i, 0, elem))
-    heapq.heapify(heap)
+        for i in range(len(rated_movies)):
+            list = self.topk_movies(rated_movies[i], k_recommended)
+            lists.append(list)
+            elem = list[0]
+            score = -elem.weighted_sim # negative score so its descending order
+            heap.append((score, i, 0, elem))
+        heapq.heapify(heap)
 
 
-    result = []
-    while heap:
-        score, i, j, elem = heapq.heappop(heap)
-        movie_id = elem.movie_id
-        neighbor_id = elem.neighbor_id
+        result = []
+        while heap:
+            score, i, j, elem = heapq.heappop(heap)
+            movie_id = elem.movie_id
+            neighbor_id = elem.neighbor_id
 
-        if movie_id not in seed_movies:
-            result.append(movie_id)
-        if neighbor_id not in seed_movies:
-            result.append(neighbor_id)
+            if movie_id not in seed_movies:
+                result.append(movie_id)
+            if neighbor_id not in seed_movies:
+                result.append(neighbor_id)
 
-        # advance in list i
-        if j + 1 < len(lists[i]):
-            nxt = lists[i][j + 1]
-            nxt_score = -nxt.weighted_sim
-            heapq.heappush(heap, (nxt_score, i, j + 1, nxt))
-    return result
+            # advance in list i
+            if j + 1 < len(lists[i]):
+                nxt = lists[i][j + 1]
+                nxt_score = -nxt.weighted_sim
+                heapq.heappush(heap, (nxt_score, i, j + 1, nxt))
+        return result
 
-# recommends k movies based on given titles
-# expect movie_ratings = [(movie_title, rating), ...]
-def recommend_movies(movie_ratings, k=5):
-    print([x.title for x in movie_ratings])
-    seed_movies = [(movie_inv_titles[x.title], x.rating) for x in movie_ratings]
-    rec_movie_ids = find_recommended_movies(session, seed_movies)[:k]
-    rec_movie_titles = [movie_titles[x] for x in rec_movie_ids]
-    return rec_movie_titles
+    # recommends k movies based on given titles
+    # expect movie_ratings = [(movie_title, rating), ...]
+    def recommend_movies(self, movie_ratings, k=5):
+        print([x.title for x in movie_ratings])
+        seed_movies = [(self.movie_inv_titles[x.title], x.rating) for x in movie_ratings]
+        rec_movie_ids = self.find_recommended_movies(seed_movies)[:k]
+        rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
+        return rec_movie_titles
 
-def verify_movie_in_db(title):
-    exists = title in movie_inv_titles
-    if exists:
-        print("Movie exists")
-    else:
-        print("Movie does not exist")
-    return exists
+    def verify_movie_in_db(self, title):
+        exists = title in self.movie_inv_titles
+        if exists:
+            print("Movie exists")
+        else:
+            print("Movie does not exist")
+        return exists
 
 
 

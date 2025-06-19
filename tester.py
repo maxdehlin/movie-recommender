@@ -1,5 +1,5 @@
 from schemas import Seed
-from recommender.recommender import recommend_movies
+from recommender.recommender import MovieRecommender
 
 seeds = [
     Seed(title='Toy Story (1995)', rating=5.0),
@@ -16,9 +16,6 @@ seeds = [
 ]
 
 
-movies = recommend_movies(seeds, 100)
-
-print()
-for movie in movies:
-    print(movie)
-print()
+# movies = recommend_movies(seeds, 100)
+recommender = MovieRecommender()
+recommender.create_mappings()
