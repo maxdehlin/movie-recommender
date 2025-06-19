@@ -4,6 +4,9 @@ FROM python:3.11-slim
 # Prevent Python from writing .pyc files and buffering stdout/stderr
 ENV PYTHONUNBUFFERED=1
 
+# Create shell 
+RUN apt-get update && apt-get install -y bash
+
 # Set working directory
 WORKDIR /app
 

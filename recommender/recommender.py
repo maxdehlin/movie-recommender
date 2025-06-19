@@ -11,14 +11,14 @@ from recommender.models import MovieSimilarity, Movie
 from recommender.db import make_session_factory
 
 
-url = os.getenv("LOCAL_DATABASE_URL")
+url = os.getenv("DATABASE_URL")
 if url.startswith("postgres://"):
     url = url.replace("postgres://", "postgresql+psycopg2://", 1)
 
 SessionLocal = make_session_factory(url)
 session = SessionLocal()
 
-load_dotenv()
+# load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
@@ -30,25 +30,23 @@ folder = big
 
 # get the directory where this .py file lives
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# point to the “data” folder inside it
 data_folder = os.path.join(BASE_DIR, folder)
-# print(data_folder)
 
-# now these will work no matter where you run the script from
 # ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
 movies  = pd.read_csv(os.path.join(data_folder, "movies.csv"))
 
 ratings = pd.DataFrame()
-# ratings = pd.read_csv(f'{folder}/ratings.csv')
-
-# movies = pd.read_csv(f'{folder}/movies.csv')
 user_mapper = {}
 movie_mapper = {}
 user_inv_mapper = {}
 movie_inv_mapper = {}
 movie_titles = dict(zip(movies['movieId'], movies['title']))
 movie_inv_titles = dict(zip(movies['title'], movies['movieId']))
+
+def import_data(folder):
+    
+
+
 
 
 # Generates a sparse utility matrix

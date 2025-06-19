@@ -55,97 +55,97 @@ app.add_middleware(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 url = os.getenv("DATABASE_URL")
-print("DATABASE_URL")
-if not url:
-    raise RuntimeError("DATABASE_URL environment variable not set")
-if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql://", 1)
+print("WTF")
+# if not url:
+#     raise RuntimeError("DATABASE_URL environment variable not set")
+# if url.startswith("postgres://"):
+#     url = url.replace("postgres://", "postgresql://", 1)
 
 
-SessionLocal = make_session_factory(url)
-session = SessionLocal()
+# SessionLocal = make_session_factory(url)
+# session = SessionLocal()
 
-def verify_jwt(token: str = Depends(oauth2_scheme)):
-    print('token', token)
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid JWT payload")
-        return user_id
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
+# def verify_jwt(token: str = Depends(oauth2_scheme)):
+#     print('token', token)
+#     try:
+#         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+#         user_id = payload.get("sub")
+#         if user_id is None:
+#             raise HTTPException(status_code=401, detail="Invalid JWT payload")
+#         return user_id
+#     except JWTError:
+#         raise HTTPException(status_code=401, detail="Could not validate credentials")
     
 
-@app.get("/auth/google/login")
-async def google_login(request: Request):
-    """
-    Redirect single-page frontend (or any client) to Google’s consent screen.
-    """
-    redirect_uri = request.url_for("google_callback")
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+# @app.get("/auth/google/login")
+# async def google_login(request: Request):
+#     """
+#     Redirect single-page frontend (or any client) to Google’s consent screen.
+#     """
+#     redirect_uri = request.url_for("google_callback")
+#     return await oauth.google.authorize_redirect(request, redirect_uri)
 
-from fastapi.responses import RedirectResponse
+# from fastapi.responses import RedirectResponse
 
-FRONTEND_URL = "http://localhost:5173"
+# FRONTEND_URL = "http://localhost:5173"
 
 
-@app.get("/auth/google/callback")
-async def google_callback(request: Request):
-    """
-    Google will redirect back here with a “code” query param.
-    We exchange it for tokens, verify the ID token, upsert the User,
-    and return a JWT for the frontend to store/use on subsequent requests.
-    """
-    # exchange “code” for tokens & get userinfo
-    token = await oauth.google.authorize_access_token(request)
-    user_info = token.get("userinfo") or await oauth.google.parse_id_token(request, token)
+# @app.get("/auth/google/callback")
+# async def google_callback(request: Request):
+#     """
+#     Google will redirect back here with a “code” query param.
+#     We exchange it for tokens, verify the ID token, upsert the User,
+#     and return a JWT for the frontend to store/use on subsequent requests.
+#     """
+#     # exchange “code” for tokens & get userinfo
+#     token = await oauth.google.authorize_access_token(request)
+#     user_info = token.get("userinfo") or await oauth.google.parse_id_token(request, token)
 
-    # extract Google’s unique user ID and other profile fields
-    google_id = user_info["sub"]
-    email = user_info["email"]
-    name = user_info.get("name", "")
-    print('callback')
+#     # extract Google’s unique user ID and other profile fields
+#     google_id = user_info["sub"]
+#     email = user_info["email"]
+#     name = user_info.get("name", "")
+#     print('callback')
     
-    user = insert_user(session, google_id, email, name)
+#     user = insert_user(session, google_id, email, name)
 
-    # generate a JWT so the frontend can call protected APIs
-    expire = int(time.time() + JWT_EXPIRE_SECONDS)
-    payload = {
-        "sub": str(user.id),
-        "exp": expire,
-    }
-    access_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    redirect_url = f"{FRONTEND_URL}/?token={access_token}"
-    return RedirectResponse(redirect_url)
-
-
-
-
-@app.get("/verify_movie")
-async def verify_movie(
-    movie: str,
-    user_id: str = Depends(verify_jwt)
-):
-    # print(movie)
-    result = verify_movie_in_db(movie)
-    if result:
-        message = "Movie verified"
-    else:
-        message = "Invalid movie"
-    return {"success": result, "detail": message}
+#     # generate a JWT so the frontend can call protected APIs
+#     expire = int(time.time() + JWT_EXPIRE_SECONDS)
+#     payload = {
+#         "sub": str(user.id),
+#         "exp": expire,
+#     }
+#     access_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+#     redirect_url = f"{FRONTEND_URL}/?token={access_token}"
+#     return RedirectResponse(redirect_url)
 
 
 
-@app.post("/recommend")
-async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
-    print('seeds', seeds)
-    # recommend movies based on seeds
-    message = recommend_movies(seeds.seeds)
 
-    # save seeds
-    success = bool(message)
-    return {"success": success, "detail": message}
+# @app.get("/verify_movie")
+# async def verify_movie(
+#     movie: str,
+#     user_id: str = Depends(verify_jwt)
+# ):
+#     # print(movie)
+#     result = verify_movie_in_db(movie)
+#     if result:
+#         message = "Movie verified"
+#     else:
+#         message = "Invalid movie"
+#     return {"success": result, "detail": message}
+
+
+
+# @app.post("/recommend")
+# async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
+#     print('seeds', seeds)
+#     # recommend movies based on seeds
+#     message = recommend_movies(seeds.seeds)
+
+#     # save seeds
+#     success = bool(message)
+#     return {"success": success, "detail": message}
 
 
 # setter: Create profile
