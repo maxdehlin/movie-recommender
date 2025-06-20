@@ -44,7 +44,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173"], # add remote origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -57,7 +57,6 @@ app.add_middleware(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 url = os.getenv("DATABASE_URL")
-print("WTF")
 if not url:
     raise RuntimeError("DATABASE_URL environment variable not set")
 if url.startswith("postgres://"):
@@ -79,20 +78,23 @@ def verify_jwt(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Could not validate credentials")
     
 
+@app.get("/")
+async def root():
+    return {"status": "ok"}
+
 @app.get("/auth/google/login")
 async def google_login(request: Request):
     """
     Redirect single-page frontend (or any client) to Google’s consent screen.
     """
-    redirect_uri = request.url_for("google_callback")
+    redirect_uri = str(request.url_for("google_callback")).replace("http://", "https://")    
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 from fastapi.responses import RedirectResponse
 
 FRONTEND_URL = "http://localhost:5173"
 
-
-@app.get("/auth/google/callback")
+@app.get("/auth/google/callback", name="google_callback")
 async def google_callback(request: Request):
     """
     Google will redirect back here with a “code” query param.
@@ -121,9 +123,6 @@ async def google_callback(request: Request):
     redirect_url = f"{FRONTEND_URL}/?token={access_token}"
     return RedirectResponse(redirect_url)
 
-
-
-
 @app.get("/verify_movie")
 async def verify_movie(
     movie: str,
@@ -136,7 +135,6 @@ async def verify_movie(
     else:
         message = "Invalid movie"
     return {"success": result, "detail": message}
-
 
 
 @app.post("/recommend")
