@@ -85,7 +85,7 @@ async def root():
 @app.get("/auth/google/login")
 async def google_login(request: Request):
     """
-    Redirect single-page frontend (or any client) to Google’s consent screen.
+    Redirect single-page frontend (or any client) to Google's consent screen.
     """
     redirect_uri = str(request.url_for("google_callback")).replace("http://", "https://")    
     return await oauth.google.authorize_redirect(request, redirect_uri)
@@ -97,15 +97,15 @@ FRONTEND_URL = "http://localhost:5173"
 @app.get("/auth/google/callback", name="google_callback")
 async def google_callback(request: Request):
     """
-    Google will redirect back here with a “code” query param.
+    Google will redirect back here with a "code" query param.
     We exchange it for tokens, verify the ID token, upsert the User,
     and return a JWT for the frontend to store/use on subsequent requests.
     """
-    # exchange “code” for tokens & get userinfo
+    # exchange "code" for tokens & get userinfo
     token = await oauth.google.authorize_access_token(request)
     user_info = token.get("userinfo") or await oauth.google.parse_id_token(request, token)
 
-    # extract Google’s unique user ID and other profile fields
+    # extract Google's unique user ID and other profile fields
     google_id = user_info["sub"]
     email = user_info["email"]
     name = user_info.get("name", "")
@@ -156,3 +156,41 @@ async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
 # getter: Get profile
 
 # getter: Get recommendations
+
+@app.post("/auth/dev-login")
+async def dev_login():
+    """
+    Development-only endpoint that returns a JWT token without Google OAuth.
+    This endpoint should never be used in production.
+    """
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(
+            status_code=404,
+            detail="This endpoint is not available in production"
+        )
+    
+    # Create or get test user
+    test_user = insert_user(
+        session,
+        google_id=None,  # No Google ID for dev login
+        email="dev@example.com",
+        name="Development User"
+    )
+    
+    # Generate JWT token
+    expire = int(time.time() + JWT_EXPIRE_SECONDS)
+    payload = {
+        "sub": str(test_user.id),
+        "exp": expire,
+    }
+    access_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": test_user.id,
+            "email": test_user.email,
+            "name": test_user.name
+        }
+    }
