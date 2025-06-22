@@ -157,6 +157,83 @@ async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
 
 # getter: Get recommendations
 
+@app.get("/dev/movies")
+async def get_dev_movies():
+    """
+    Development-only endpoint that returns mock movie data for frontend development.
+    This endpoint should never be used in production.
+    """
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(
+            status_code=404,
+            detail="This endpoint is not available in production"
+        )
+    
+    import json
+    try:
+        with open("mock_data.json", "r") as f:
+            mock_data = json.load(f)
+        return mock_data
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=500,
+            detail="Mock data file not found"
+        )
+
+@app.get("/dev/random-movies")
+async def get_random_dev_movies(count: int = 5):
+    """
+    Development-only endpoint that returns a random selection of movies for rating.
+    This endpoint should never be used in production.
+    """
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(
+            status_code=404,
+            detail="This endpoint is not available in production"
+        )
+    
+    import json
+    import random
+    try:
+        with open("mock_data.json", "r") as f:
+            mock_data = json.load(f)
+        
+        # Return random selection of movies
+        random_movies = random.sample(mock_data["movies"], min(count, len(mock_data["movies"])))
+        return {"movies": random_movies}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=500,
+            detail="Mock data file not found"
+        )
+
+@app.post("/dev/mock-recommend")
+async def mock_recommend(user_id: str = Depends(verify_jwt)):
+    """
+    Development-only endpoint that returns mock recommendations.
+    This endpoint should never be used in production.
+    """
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(
+            status_code=404,
+            detail="This endpoint is not available in production"
+        )
+    
+    import json
+    try:
+        with open("mock_data.json", "r") as f:
+            mock_data = json.load(f)
+        
+        return {
+            "success": True,
+            "detail": mock_data["recommendations"]
+        }
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=500,
+            detail="Mock data file not found"
+        )
+
 @app.post("/auth/dev-login")
 async def dev_login():
     """

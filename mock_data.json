@@ -1,0 +1,207 @@
+{
+  "movies": [
+    {
+      "id": 1,
+      "title": "The Shawshank Redemption",
+      "year": 1994,
+      "genres": ["Drama"],
+      "rating": 9.3,
+      "poster": "https://m.media-amazon.com/images/M/MV5BNDE3ODcxYzMtY2YzZC00NmNlLWJiNDMtZDViZWM2MzIxZDYwXkEyXkFqcGdeQXVyNjAwNDUxODI@._V1_SX300.jpg",
+      "description": "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency."
+    },
+    {
+      "id": 2,
+      "title": "The Godfather",
+      "year": 1972,
+      "genres": ["Crime", "Drama"],
+      "rating": 9.2,
+      "poster": "https://m.media-amazon.com/images/M/MV5BM2MyNjYxNmUtYTAwNi00MTYxLWJmNWYtYzZlODY3ZTk3OTFlXkEyXkFqcGdeQXVyNzUwOTU2Njg@._V1_SX300.jpg",
+      "description": "The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son."
+    },
+    {
+      "id": 3,
+      "title": "The Dark Knight",
+      "year": 2008,
+      "genres": ["Action", "Crime", "Drama"],
+      "rating": 9.0,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_SX300.jpg",
+      "description": "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests."
+    },
+    {
+      "id": 4,
+      "title": "Pulp Fiction",
+      "year": 1994,
+      "genres": ["Crime", "Drama"],
+      "rating": 8.9,
+      "poster": "https://m.media-amazon.com/images/M/MV5BNGNhMDIzZTUtNTBlZi00MTRlLWFjM2ItYzViMjE3YzI5MjljXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg",
+      "description": "The lives of two mob hitmen, a boxer, a gangster and his wife intertwine in four tales of violence and redemption."
+    },
+    {
+      "id": 5,
+      "title": "Forrest Gump",
+      "year": 1994,
+      "genres": ["Drama", "Romance"],
+      "rating": 8.8,
+      "poster": "https://m.media-amazon.com/images/M/MV5BNWIwODRlZTUtY2U3ZS00Yzg1LWJhNzYtMmZiYmEyNmU1NjMzXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
+      "description": "The presidencies of Kennedy and Johnson, the events of Vietnam, Watergate and other historical events unfold from the perspective of an Alabama man."
+    },
+    {
+      "id": 6,
+      "title": "Inception",
+      "year": 2010,
+      "genres": ["Action", "Sci-Fi", "Thriller"],
+      "rating": 8.8,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg",
+      "description": "A thief who steals corporate secrets through dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
+    },
+    {
+      "id": 7,
+      "title": "The Matrix",
+      "year": 1999,
+      "genres": ["Action", "Sci-Fi"],
+      "rating": 8.7,
+      "poster": "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_SX300.jpg",
+      "description": "A computer programmer is led to fight an underground war against powerful computers who have constructed his entire reality with a system called the Matrix."
+    },
+    {
+      "id": 8,
+      "title": "Goodfellas",
+      "year": 1990,
+      "genres": ["Biography", "Crime", "Drama"],
+      "rating": 8.7,
+      "poster": "https://m.media-amazon.com/images/M/MV5BY2NkZjEzMDgtN2RjYy00YzM1LWI4ZmQtMjIwYjFjNmI3ZGEwXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg",
+      "description": "The story of Henry Hill and his life in the mob, covering his relationship with his wife Karen Hill and his mob partners."
+    },
+    {
+      "id": 9,
+      "title": "Interstellar",
+      "year": 2014,
+      "genres": ["Adventure", "Drama", "Sci-Fi"],
+      "rating": 8.6,
+      "poster": "https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg",
+      "description": "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival."
+    },
+    {
+      "id": 10,
+      "title": "The Lord of the Rings: The Return of the King",
+      "year": 2003,
+      "genres": ["Action", "Adventure", "Drama"],
+      "rating": 8.9,
+      "poster": "https://m.media-amazon.com/images/M/MV5BNzA5ZDNlZWMtM2NhNS00NDJjLTk4NDItYTRmY2EwMWI5MTktXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg",
+      "description": "Gandalf and Aragorn lead the World of Men against Sauron's army to draw his gaze from Frodo and Sam as they approach Mount Doom with the One Ring."
+    },
+    {
+      "id": 11,
+      "title": "Fight Club",
+      "year": 1999,
+      "genres": ["Drama"],
+      "rating": 8.8,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMmEzNTkxYjQtZTc0MC00YTVjLTg5ZTEtZWMwOWVlYzY0NWIwXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg",
+      "description": "An insomniac office worker and a devil-may-care soapmaker form an underground fight club that evolves into an anarchist organization."
+    },
+    {
+      "id": 12,
+      "title": "The Avengers",
+      "year": 2012,
+      "genres": ["Action", "Adventure", "Sci-Fi"],
+      "rating": 8.0,
+      "poster": "https://m.media-amazon.com/images/M/MV5BNDYxNjQyMjAtNTdiOS00NGYwLWFmNTAtNThmYjU5ZGI2YTI1XkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg",
+      "description": "Earth's mightiest heroes must come together and learn to fight as a team if they are going to stop the mischievous Loki and his alien army from enslaving humanity."
+    },
+    {
+      "id": 13,
+      "title": "Titanic",
+      "year": 1997,
+      "genres": ["Drama", "Romance"],
+      "rating": 7.8,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMDdmZGU3NDQtY2E5My00ZTliLWIzOTUtMTY4ZGI1YjdiNjk3XkEyXkFqcGdeQXVyNTA4NzY1MzY@._V1_SX300.jpg",
+      "description": "A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the luxurious, ill-fated R.M.S. Titanic."
+    },
+    {
+      "id": 14,
+      "title": "Avatar",
+      "year": 2009,
+      "genres": ["Action", "Adventure", "Fantasy"],
+      "rating": 7.8,
+      "poster": "https://m.media-amazon.com/images/M/MV5BZDA0OGQxNTItMDZkMC00N2UyLTg3MTMtYTJmNjg3Nzk5MzRiXkEyXkFqcGdeQXVyMjUzOTY1NTc@._V1_SX300.jpg",
+      "description": "A paraplegic Marine dispatched to the moon Pandora on a unique mission becomes torn between following his orders and protecting the world he feels is his home."
+    },
+    {
+      "id": 15,
+      "title": "The Lion King",
+      "year": 1994,
+      "genres": ["Animation", "Adventure", "Drama"],
+      "rating": 8.5,
+      "poster": "https://m.media-amazon.com/images/M/MV5BYTYxNGMyZTYtMjE3MS00MzNjLWFjNmYtMDk3N2FmM2JiM2M1XkEyXkFqcGdeQXVyNjY5NDU4NzI@._V1_SX300.jpg",
+      "description": "Lion prince Simba and his father are targeted by his bitter uncle, who wants to ascend the throne himself."
+    },
+    {
+      "id": 16,
+      "title": "Jurassic Park",
+      "year": 1993,
+      "genres": ["Adventure", "Sci-Fi", "Thriller"],
+      "rating": 8.1,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMjM2MDgxMDg0Nl5BMl5BanBnXkFtZTgwNTM2OTM5NDE@._V1_SX300.jpg",
+      "description": "A pragmatic paleontologist visiting an almost complete theme park is tasked with protecting a couple of kids after a power failure causes the park's cloned dinosaurs to run loose."
+    },
+    {
+      "id": 17,
+      "title": "Star Wars: Episode IV - A New Hope",
+      "year": 1977,
+      "genres": ["Action", "Adventure", "Fantasy"],
+      "rating": 8.6,
+      "poster": "https://m.media-amazon.com/images/M/MV5BOTA5NjhiOTAtZWM0ZC00MWNhLThiMzEtZDFkOTk2OTU1ZDJkXkEyXkFqcGdeQXVyMTA4NDI1NTQx@._V1_SX300.jpg",
+      "description": "Luke Skywalker joins forces with a Jedi Knight, a cocky pilot, a Wookiee and two droids to save the galaxy from the Empire's world-destroying battle station."
+    },
+    {
+      "id": 18,
+      "title": "Toy Story",
+      "year": 1995,
+      "genres": ["Animation", "Adventure", "Comedy"],
+      "rating": 8.3,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg",
+      "description": "A cowboy doll is profoundly threatened and jealous when a new spaceman figure supplants him as top toy in a boy's room."
+    },
+    {
+      "id": 19,
+      "title": "Deadpool",
+      "year": 2016,
+      "genres": ["Action", "Comedy", "Sci-Fi"],
+      "rating": 8.0,
+      "poster": "https://m.media-amazon.com/images/M/MV5BYzE5MjY1ZDgtMTkyNC00MTMyLThhMjAtZGI5OTE1NzFlZGJjXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_SX300.jpg",
+      "description": "A wisecracking mercenary gets experimented on and becomes immortal but ugly, and sets out to track down the man who ruined his looks."
+    },
+    {
+      "id": 20,
+      "title": "Spider-Man: Into the Spider-Verse",
+      "year": 2018,
+      "genres": ["Animation", "Action", "Adventure"],
+      "rating": 8.4,
+      "poster": "https://m.media-amazon.com/images/M/MV5BMjMwNDkxMTgzOF5BMl5BanBnXkFtZTgwNTkwNTQ3NjM@._V1_SX300.jpg",
+      "description": "Teen Miles Morales becomes the Spider-Man of his universe, and must join with five spider-powered individuals from other dimensions to stop a threat for all realities."
+    }
+  ],
+  "recommendations": [
+    {
+      "title": "The Prestige",
+      "year": 2006,
+      "genres": ["Drama", "Mystery", "Thriller"],
+      "rating": 8.5,
+      "reason": "Complex storytelling and mind-bending plot twists similar to Inception"
+    },
+    {
+      "title": "Blade Runner 2049",
+      "year": 2017,
+      "genres": ["Action", "Drama", "Sci-Fi"],
+      "rating": 8.0,
+      "reason": "Thought-provoking sci-fi with stunning visuals and deep themes"
+    },
+    {
+      "title": "Mad Max: Fury Road",
+      "year": 2015,
+      "genres": ["Action", "Adventure", "Sci-Fi"],
+      "rating": 8.1,
+      "reason": "Intense action sequences with incredible practical effects"
+    }
+  ]
+}
