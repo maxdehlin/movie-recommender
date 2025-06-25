@@ -21,6 +21,9 @@ config = Config(environ=os.environ)
 
 client_id = os.getenv("DEV_GOOGLE_CLIENT_ID")
 client_secret = os.getenv("DEV_GOOGLE_CLIENT_SECRET")
+APP_ENV = os.getenv("APP_ENV")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 
 recommender = MovieRecommender()
 
@@ -44,7 +47,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # add remote origin
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        FRONTEND_URL
+        ], # add remote origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -87,12 +94,15 @@ async def google_login(request: Request):
     """
     Redirect single-page frontend (or any client) to Google's consent screen.
     """
-    redirect_uri = str(request.url_for("google_callback")).replace("http://", "https://")    
+    redirect_uri = str(request.url_for("google_callback"))
+    if APP_ENV == 'prod':
+        redirect_uri = redirect_uri.replace("http://", "https://")    
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 from fastapi.responses import RedirectResponse
 
-FRONTEND_URL = "http://localhost:5173"
+
+
 
 @app.get("/auth/google/callback", name="google_callback")
 async def google_callback(request: Request):
@@ -121,6 +131,7 @@ async def google_callback(request: Request):
     }
     access_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     redirect_url = f"{FRONTEND_URL}/?token={access_token}"
+    print(FRONTEND_URL)
     return RedirectResponse(redirect_url)
 
 @app.get("/verify_movie")
@@ -128,7 +139,8 @@ async def verify_movie(
     movie: str,
     user_id: str = Depends(verify_jwt)
 ):
-    # print(movie)
+    print('balls')
+    print(movie)
     result = recommender.verify_movie_in_db(movie)
     if result:
         message = "Movie verified"
@@ -147,23 +159,14 @@ async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
     success = bool(message)
     return {"success": success, "detail": message}
 
-
-# setter: Create profile
-
-# setter: Submit rating
-
-
-# getter: Get profile
-
-# getter: Get recommendations
-
 @app.get("/dev/movies")
 async def get_dev_movies():
     """
     Development-only endpoint that returns mock movie data for frontend development.
     This endpoint should never be used in production.
     """
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    print('API CALLED')
+    if APP_ENV == "prod":
         raise HTTPException(
             status_code=404,
             detail="This endpoint is not available in production"
@@ -173,6 +176,8 @@ async def get_dev_movies():
     try:
         with open("mock_data.json", "r") as f:
             mock_data = json.load(f)
+        print('huh?')
+        print(mock_data)
         return mock_data
     except FileNotFoundError:
         raise HTTPException(
@@ -186,7 +191,7 @@ async def get_random_dev_movies(count: int = 5):
     Development-only endpoint that returns a random selection of movies for rating.
     This endpoint should never be used in production.
     """
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if APP_ENV == "prod":
         raise HTTPException(
             status_code=404,
             detail="This endpoint is not available in production"
@@ -213,7 +218,7 @@ async def mock_recommend(user_id: str = Depends(verify_jwt)):
     Development-only endpoint that returns mock recommendations.
     This endpoint should never be used in production.
     """
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if APP_ENV == "prod":
         raise HTTPException(
             status_code=404,
             detail="This endpoint is not available in production"
@@ -240,7 +245,7 @@ async def dev_login():
     Development-only endpoint that returns a JWT token without Google OAuth.
     This endpoint should never be used in production.
     """
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if APP_ENV == "prod":
         raise HTTPException(
             status_code=404,
             detail="This endpoint is not available in production"

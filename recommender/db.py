@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, String, text, and_
 from sqlalchemy.orm import sessionmaker
 from recommender.models import Base, MovieSimilarity, Movie, User, Rating
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.exc import OperationalError
 load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -47,13 +48,37 @@ def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_coun
     session.commit()
 
 
+# def insert_user(session, google_id, email, name):
+#     try:
+#         user = session.query(User).filter_by(google_id=google_id).first()
+#     except Exception:
+#         session.rollback()
+#         raise
+#     if not user:
+#         user = User(google_id=google_id, email=email, name=name)
+#         session.add(user)
+#         session.commit()
+#         session.refresh(user)
+#     return user
+
+
+
 def insert_user(session, google_id, email, name):
-    user = session.query(User).filter_by(google_id=google_id).first()
+    try:
+        user = session.query(User).filter_by(google_id=google_id).first()
+    except OperationalError:
+        session.rollback()
+        raise print(status_code=500, detail="Database connection lost.")
+    except Exception:
+        session.rollback()
+        raise
+
     if not user:
         user = User(google_id=google_id, email=email, name=name)
         session.add(user)
         session.commit()
         session.refresh(user)
+
     return user
 
 

@@ -21,7 +21,19 @@ https://movie-recommender-fragrant-shape-7289.fly.dev/
 psql -U {user} -d movie_db
 
 # start remote sql
+## proxy
+fly proxy 15432:5432 -a movierec-db
 psql postgresql://$REMOTE_POSTGRES_USER:$REMOTE_POSTGRES_PASSWORD@localhost:15432/movie_recommender_fragrant_shape_7289
+
+
+#
+psql postgresql://movie_recommender_fragrant_shape_7289:PaBNjD6zT4Jyo6g@localhost:15432/movie_recommender_fragrant_shape_7289
+
+
+fly ssh console -a movie-recommender-fragrant-shape-7289
+
+fly ssh sftp shell -a movie-recommender-fragrant-shape-7289
+put recommender/data/ml-32m/ratings.csv /app/recommender/data/ml-32m/
 
 
 
@@ -35,8 +47,7 @@ alembic upgrade head
 # attach app to database
 fly postgres attach movierec-db --app movie-recommender-fragrant-shape-7289
 
-# proxy
-fly proxy 15432:5432 -a movierec-db
+
 
 # restart db
 fly machine list -a movierec-db

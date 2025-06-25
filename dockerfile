@@ -27,5 +27,9 @@ COPY . .
 # Expose default port
 EXPOSE 8000
 
+# Copy dataset
+# Assuming you already have a Dockerfile in your backend
+COPY recommender/data/ml-32m/ratings.csv /app/recommender/data/ml-32m/ratings.csv
+
 # Launch the FastAPI app with Uvicorn
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
