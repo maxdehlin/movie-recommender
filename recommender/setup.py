@@ -1,4 +1,4 @@
-from db import load_movies_from_csv, make_session_factory, text
+from db import load_movies_from_csv, get_db, text
 from setup import MovieRecommender
 import os
 from dotenv import load_dotenv
@@ -13,13 +13,15 @@ def main():
     url = os.getenv("TEST_DATABASE_URL")
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+psycopg2://", 1)
-    SessionLocal = make_session_factory(url)
-    session = SessionLocal()
+    # SessionLocal = make_session_factory(url)
+    # session = SessionLocal()
+    session = next(get_db())
+
     recommender = MovieRecommender()
 
     try:
         load_movies_from_csv(session, movies_path)
-        
+
         session.commit()
     except:
         session.rollback()

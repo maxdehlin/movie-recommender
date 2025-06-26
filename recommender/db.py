@@ -26,6 +26,12 @@ def insert_movies(session, movies):
     session.commit()
     session.close()
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims):
     batch = []
@@ -47,7 +53,6 @@ def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_coun
     session.bulk_save_objects(batch)
     session.commit()
 
-
 # def insert_user(session, google_id, email, name):
 #     try:
 #         user = session.query(User).filter_by(google_id=google_id).first()
@@ -60,8 +65,6 @@ def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_coun
 #         session.commit()
 #         session.refresh(user)
 #     return user
-
-
 
 def insert_user(session, google_id, email, name):
     try:
@@ -80,7 +83,6 @@ def insert_user(session, google_id, email, name):
         session.refresh(user)
 
     return user
-
 
 def insert_rating(session, user_id, movie_id, value):
     rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
@@ -115,17 +117,20 @@ def load_movies_from_csv(session, csv_path):
                .all()
     }
 
-
     new_movies = [m for m in movies_data if m["id"] not in existing]
     print(f"Inserting {len(new_movies)} new movies (skipped {len(movies_data) - len(new_movies)})")
 
     session.bulk_insert_mappings(Movie, new_movies)
     session.commit()
 
-
-
-
 def reset_and_populate(session):
     # truncate child table first, then parent
     session.execute(text("TRUNCATE TABLE movies CASCADE;"))
     session.commit()
+
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+
+SessionLocal = make_session_factory(DATABASE_URL)

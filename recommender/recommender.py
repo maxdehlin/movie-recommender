@@ -22,14 +22,13 @@ big = 'data/ml-32m'
 
 
 class MovieRecommender:
-    def __init__(self, db_url=None, folder='data/ml-32m'):
-        self.db_url = db_url or os.getenv('DATABASE_URL')
-        if not self.db_url:
-            raise RuntimeError("DATABASE_URL not set")
-        if self.db_url.startswith("postgres://"):
-            self.db_url = self.db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    def __init__(self, folder='data/ml-32m'):
+        # self.db_url = db_url or os.getenv('DATABASE_URL')
+        # if not self.db_url:
+        #     raise RuntimeError("DATABASE_URL not set")
+        # if self.db_url.startswith("postgres://"):
+        #     self.db_url = self.db_url.replace("postgres://", "postgresql+psycopg2://", 1)
 
-        self.session = make_session_factory(self.db_url)()
         self.folder = folder
         self.ratings = None
         self.movies = None
@@ -37,21 +36,24 @@ class MovieRecommender:
         self.movie_titles = {}
         self.movie_inv_titles = {}
 
-        self.create_mappings()
+
+    def tester(self, parameter):
+        print('parameter', parameter)
+
     
     def import_data(self, folder):
         # get the directory where this .py file lives
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         data_folder = os.path.join(BASE_DIR, folder)
-        ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
-        movies  = pd.read_csv(os.path.join(data_folder, "movies.csv"))
+        self.ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
+        self.movies  = pd.read_csv(os.path.join(data_folder, "movies.csv"))
 
-    def create_mappings(self):
-        movies = self.session.query(Movie).all()
+    def create_mappings(self, session):
+        movies = session.query(Movie).all()
         movie_titles = {movie.id: movie.title for movie in movies}
         movie_titles_inv = {movie.title: movie.id for movie in movies}
 
-        
+
     # Generates a sparse utility matrix
     def create_X(self, df):
         M = df['userId'].nunique()
@@ -126,9 +128,9 @@ class MovieRecommender:
         return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
 
     # query database to find movies with highest similarity movies for a given movie id
-    def topk_movies(self, movie_id, k):
+    def topk_movies(self, session, movie_id, k):
         rows = (
-            self.session.query(MovieSimilarity)
+            session.query(MovieSimilarity)
                 .filter(
                     or_(
                         MovieSimilarity.movie_id   == movie_id,
@@ -139,7 +141,7 @@ class MovieRecommender:
                 .order_by(MovieSimilarity.weighted_sim.desc())
                 .all()
         )
-        self.session.close()
+        session.close()
         return rows[:k]
 
     # find highest rated movies from a set of rated seed movies
@@ -158,7 +160,7 @@ class MovieRecommender:
 
 
     # find recommended movies from a set of seed movies
-    def find_recommended_movies(self, seed_ratings):
+    def find_recommended_movies(self, session, seed_ratings):
         seed_movies = set([x[0] for x in seed_ratings])
         
         rated_movies = self.find_highly_rated_movies(seed_ratings)
@@ -167,7 +169,7 @@ class MovieRecommender:
         k_recommended = 10
 
         for i in range(len(rated_movies)):
-            list = self.topk_movies(rated_movies[i], k_recommended)
+            list = self.topk_movies(session, rated_movies[i], k_recommended)
             lists.append(list)
             elem = list[0]
             score = -elem.weighted_sim # negative score so its descending order
@@ -195,10 +197,10 @@ class MovieRecommender:
 
     # recommends k movies based on given titles
     # expect movie_ratings = [(movie_title, rating), ...]
-    def recommend_movies(self, movie_ratings, k=5):
+    def recommend_movies(self, session,  movie_ratings, k=5):
         print([x.title for x in movie_ratings])
         seed_movies = [(self.movie_inv_titles[x.title], x.rating) for x in movie_ratings]
-        rec_movie_ids = self.find_recommended_movies(seed_movies)[:k]
+        rec_movie_ids = self.find_recommended_movies(session, seed_movies)[:k]
         rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
         return rec_movie_titles
 

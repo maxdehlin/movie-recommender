@@ -9,13 +9,15 @@ from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from jose import jwt
-from recommender.db import insert_user, make_session_factory
+from recommender.db import insert_user, get_db
 from recommender.models import User
 from recommender.recommender import MovieRecommender
 from schemas import Seeds
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+
+
 # Load environment variables from a “.env” file 
 config = Config(environ=os.environ)
 
@@ -70,9 +72,6 @@ if url.startswith("postgres://"):
     url = url.replace("postgres://", "postgresql://", 1)
 
 
-SessionLocal = make_session_factory(url)
-session = SessionLocal()
-
 def verify_jwt(token: str = Depends(oauth2_scheme)):
     print('token', token)
     try:
@@ -105,7 +104,9 @@ from fastapi.responses import RedirectResponse
 
 
 @app.get("/auth/google/callback", name="google_callback")
-async def google_callback(request: Request):
+async def google_callback(
+    request: Request,
+    session: Session = Depends(get_db)):
     """
     Google will redirect back here with a "code" query param.
     We exchange it for tokens, verify the ID token, upsert the User,
@@ -240,7 +241,7 @@ async def mock_recommend(user_id: str = Depends(verify_jwt)):
         )
 
 @app.post("/auth/dev-login")
-async def dev_login():
+async def dev_login(session: Session = Depends(get_db)):
     """
     Development-only endpoint that returns a JWT token without Google OAuth.
     This endpoint should never be used in production.
