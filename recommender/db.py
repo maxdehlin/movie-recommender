@@ -11,11 +11,13 @@ load_dotenv()
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
+
 # factory that gives a SessionLocal for any URL
 def make_session_factory(db_url: str):
     engine = create_engine(db_url, echo=True)
     Base.metadata.create_all(bind=engine)
     return sessionmaker(bind=engine)
+
 
 def insert_movies(session, movies):
     batch = [
@@ -26,12 +28,14 @@ def insert_movies(session, movies):
     session.commit()
     session.close()
 
+
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
 
 def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims):
     batch = []
@@ -53,6 +57,7 @@ def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_coun
     session.bulk_save_objects(batch)
     session.commit()
 
+
 # def insert_user(session, google_id, email, name):
 #     try:
 #         user = session.query(User).filter_by(google_id=google_id).first()
@@ -65,6 +70,7 @@ def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_coun
 #         session.commit()
 #         session.refresh(user)
 #     return user
+
 
 def insert_user(session, google_id, email, name):
     try:
@@ -84,6 +90,7 @@ def insert_user(session, google_id, email, name):
 
     return user
 
+
 def insert_rating(session, user_id, movie_id, value):
     rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
     if not rating:
@@ -92,6 +99,7 @@ def insert_rating(session, user_id, movie_id, value):
         session.commit()
         session.refresh(rating)
     return rating
+
 
 # db.py
 def load_movies_from_csv(session, csv_path):
@@ -122,6 +130,7 @@ def load_movies_from_csv(session, csv_path):
 
     session.bulk_insert_mappings(Movie, new_movies)
     session.commit()
+
 
 def reset_and_populate(session):
     # truncate child table first, then parent

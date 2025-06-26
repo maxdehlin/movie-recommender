@@ -1,5 +1,5 @@
-from db import load_movies_from_csv, get_db, text
-from setup import MovieRecommender
+from recommender.db import load_movies_from_csv, get_db, text
+from recommender.recommender import MovieRecommender
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -17,11 +17,10 @@ def main():
     # session = SessionLocal()
     session = next(get_db())
 
-    recommender = MovieRecommender()
+    # recommender = MovieRecommender()
 
     try:
         load_movies_from_csv(session, movies_path)
-
         session.commit()
     except:
         session.rollback()

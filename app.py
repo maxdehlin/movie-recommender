@@ -140,8 +140,6 @@ async def verify_movie(
     movie: str,
     user_id: str = Depends(verify_jwt)
 ):
-    print('balls')
-    print(movie)
     result = recommender.verify_movie_in_db(movie)
     if result:
         message = "Movie verified"

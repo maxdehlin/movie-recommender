@@ -8,7 +8,7 @@ from sqlalchemy import or_
 import heapq
 import os
 from recommender.models import MovieSimilarity, Movie
-from recommender.db import make_session_factory
+from recommender.db import get_db
 
 
 url = os.getenv("DATABASE_URL")
@@ -35,10 +35,11 @@ class MovieRecommender:
 
         self.movie_titles = {}
         self.movie_inv_titles = {}
+        self.create_mappings(next(get_db()))
 
 
-    def tester(self, parameter):
-        print('parameter', parameter)
+    def tester(self):
+        print(self.movie_inv_titles)
 
     
     def import_data(self, folder):
@@ -50,8 +51,8 @@ class MovieRecommender:
 
     def create_mappings(self, session):
         movies = session.query(Movie).all()
-        movie_titles = {movie.id: movie.title for movie in movies}
-        movie_titles_inv = {movie.title: movie.id for movie in movies}
+        self.movie_titles = {movie.id: movie.title for movie in movies}
+        self.movie_inv_titles = {movie.title: movie.id for movie in movies}
 
 
     # Generates a sparse utility matrix
