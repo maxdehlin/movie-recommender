@@ -99,6 +99,11 @@ def insert_rating_in_db(session, user_id, movie_id, value):
             session.add(rating)
             session.commit()
             session.refresh(rating)
+            print('Balls5')
+            print(movie_id)
+            print(value)
+            print(user_id)
+            print('Balls6')
             return True
         return False
     except Exception:

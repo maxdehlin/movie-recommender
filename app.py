@@ -9,7 +9,7 @@ from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from jose import jwt
-from recommender.db import get_db, insert_user, insert_rating
+from recommender.db import get_db, insert_user
 from recommender.models import User
 from recommender.recommender import MovieRecommender
 from schemas import Seeds
@@ -154,19 +154,24 @@ async def get_ratings(
     success = bool(ratings)
     return {"success": success, "detail": ratings}
 
+
+from schemas import RatingRequest
+
 @app.post("/user/ratings")
 async def save_rating(
-    movie: str,
+    rating: RatingRequest,
+
     user_id: str = Depends(verify_jwt),
     session: Session = Depends(get_db)
 
 ):
-    result = recommender.insert_rating(session, user_id, movie)
-    success = bool(result)
-
-    return {"success": success}
-
     
+    print('Balls1')
+    print(user_id)
+    print('Balls2')
+
+    success = recommender.insert_rating(session, user_id, rating.movie, rating.value)
+    return {"success": success}
 
 
 @app.post("/recommend")

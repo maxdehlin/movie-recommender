@@ -19,3 +19,10 @@ class Seed(BaseModel):
 
 class Seeds(BaseModel):
     seeds: list[Seed]
+
+
+from pydantic import BaseModel
+
+class RatingRequest(BaseModel):
+    movie: str
+    value: int

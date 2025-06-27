@@ -222,12 +222,17 @@ class MovieRecommender:
             print(f"Failed to fetch ratings for user {user_id}: {e}")
             return []
 
-    def insert_rating(self, session, user_id, movie):
+    def insert_rating(self, session, user_id, movie, value):
         try:
-            movie_title = self.movie_inv_titles[movie]
-            if not movie_title:
+            movie_id = self.movie_inv_titles[movie]
+            if not movie_id:
                 return False
-            success = insert_rating_in_db(session, user_id)
+            print('Balls3')
+            print(movie)
+            print(value)
+            print(user_id)
+            print('Balls4')
+            success = insert_rating_in_db(session, user_id, movie_id, value)
             return success
         except Exception:
             raise
