@@ -9,7 +9,7 @@ from starlette.config import Config
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from jose import jwt
-from recommender.db import insert_user, get_db
+from recommender.db import get_db, insert_user, insert_rating
 from recommender.models import User
 from recommender.recommender import MovieRecommender
 from schemas import Seeds
@@ -101,8 +101,6 @@ async def google_login(request: Request):
 from fastapi.responses import RedirectResponse
 
 
-
-
 @app.get("/auth/google/callback", name="google_callback")
 async def google_callback(
     request: Request,
@@ -147,6 +145,29 @@ async def verify_movie(
         message = "Invalid movie"
     return {"success": result, "detail": message}
 
+@app.get("/user/ratings")
+async def get_ratings(
+    user_id: str = Depends(verify_jwt),
+    session: Session = Depends(get_db)
+):
+    ratings = recommender.get_user_ratings(session, user_id)
+    success = bool(ratings)
+    return {"success": success, "detail": ratings}
+
+@app.post("/user/ratings")
+async def save_rating(
+    movie: str,
+    user_id: str = Depends(verify_jwt),
+    session: Session = Depends(get_db)
+
+):
+    result = recommender.insert_rating(session, user_id, movie)
+    success = bool(result)
+
+    return {"success": success}
+
+    
+
 
 @app.post("/recommend")
 async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
@@ -157,6 +178,11 @@ async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
     # save seeds
     success = bool(message)
     return {"success": success, "detail": message}
+
+# Backend API endpoints needed:
+# GET /user/ratings - Get user's ratings
+# POST /user/ratings - Save/update a rating
+# DELETE /user/ratings/{movieId} - Delete a rating
 
 @app.get("/dev/movies")
 async def get_dev_movies():
@@ -175,7 +201,6 @@ async def get_dev_movies():
     try:
         with open("mock_data.json", "r") as f:
             mock_data = json.load(f)
-        print('huh?')
         print(mock_data)
         return mock_data
     except FileNotFoundError:

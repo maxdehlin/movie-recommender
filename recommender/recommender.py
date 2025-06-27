@@ -3,12 +3,12 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from dotenv import load_dotenv
 from sklearn.neighbors import NearestNeighbors
-
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 import heapq
 import os
-from recommender.models import MovieSimilarity, Movie
-from recommender.db import get_db
+from recommender.models import MovieSimilarity, Movie, Rating
+from recommender.db import get_db, insert_rating_in_db
 
 
 url = os.getenv("DATABASE_URL")
@@ -213,31 +213,25 @@ class MovieRecommender:
             print("Movie does not exist")
         return exists
 
+    def get_user_ratings(self, session, user_id):
+        try:
+            ratings = session.query(Rating).filter(Rating.user_id == user_id).all()
+            return ratings
+        except SQLAlchemyError as e:
+            session.rollback()
+            print(f"Failed to fetch ratings for user {user_id}: {e}")
+            return []
+
+    def insert_rating(self, session, user_id, movie):
+        try:
+            movie_title = self.movie_inv_titles[movie]
+            if not movie_title:
+                return False
+            success = insert_rating_in_db(session, user_id)
+            return success
+        except Exception:
+            raise
 
 
 
-
-seed_movies = [(1, 5.0), (2, 3.5), (3, 5.0),(4, 2.5), (5, 4.0),
-               (6, 1.5),  (7, 1.0),  (8, 3.0),  (9, 2.5),  (10, 2.5),
-    (11, 2.0), (12, 1.5), (13, 5.0), (14, 1.5), (15, 4.0),
-    (16, 1.0), (17, 1.0), (18, 1.5), (19, 2.5), (20, 2.5),
-    (21, 5.0), (22, 2.5), (23, 2.5), (24, 3.0), (25, 3.0),
-    (26, 4.0), (27, 2.0), (28, 4.5), (29, 1.5), (30, 2.5),
-    (31, 4.5), (32, 3.5), (33, 2.0), (34, 1.5), (35, 1.0),
-    (36, 2.0), (37, 3.0), (38, 1.0), (39, 4.5), (40, 2.0),
-    (41, 3.0), (42, 3.5), (43, 3.0), (44, 1.5), (45, 1.5),
-    (46, 3.0), (47, 1.5), (48, 3.5), (49, 2.0), (50, 1.0),
-    (51, 2.5), (52, 1.5), (53, 3.5), (54, 1.5), (55, 3.0),
-    (57, 3.5), (58, 4.5), (59, 2.5), (60, 3.5),
-    (61, 1.5), (62, 3.0), (63, 3.5), (64, 1.0), (65, 3.0),
-    (66, 4.5), (67, 2.5), (68, 2.0), (69, 5.0), (70, 4.0),
-    (71, 2.5), (72, 1.0), (73, 1.0), (74, 4.0), (75, 3.5),
-    (76, 3.0), (77, 3.5), (78, 2.0), (79, 4.0), (80, 3.0),
-    (81, 2.0), (82, 4.5), (83, 5.0), (85, 2.0),
-    (86, 3.5), (87, 1.5), (88, 2.0), (89, 1.0), (90, 3.5),
-    (91, 2.5), (92, 4.5), (93, 4.0), (94, 4.5), (95, 2.0),
-    (96, 3.0), (97, 2.0), (98, 2.5), (99, 5.0), (100, 5.0),
-    (101, 3.0), (102, 4.0), (103, 4.0), (104, 3.5), (105, 2.5),]
-
-
-
+            

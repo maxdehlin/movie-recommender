@@ -91,14 +91,19 @@ def insert_user(session, google_id, email, name):
     return user
 
 
-def insert_rating(session, user_id, movie_id, value):
-    rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
-    if not rating:
-        rating = Rating(user_id=user_id, movie_id=movie_id, value=value)
-        session.add(rating)
-        session.commit()
-        session.refresh(rating)
-    return rating
+def insert_rating_in_db(session, user_id, movie_id, value):
+    try:
+        rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
+        if not rating:
+            rating = Rating(user_id=user_id, movie_id=movie_id, value=value)
+            session.add(rating)
+            session.commit()
+            session.refresh(rating)
+            return True
+        return False
+    except Exception:
+        session.rollback()
+        raise
 
 
 # db.py
