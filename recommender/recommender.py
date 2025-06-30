@@ -36,23 +36,29 @@ class MovieRecommender:
         self.movie_titles = {}
         self.movie_inv_titles = {}
         self.create_mappings(next(get_db()))
+        self.import_movies()
 
 
     def tester(self):
         print(self.movie_inv_titles)
 
     
-    def import_data(self, folder):
+    def import_movies(self):
         # get the directory where this .py file lives
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        data_folder = os.path.join(BASE_DIR, folder)
+        data_folder = os.path.join(BASE_DIR, self.folder)
+        print(f'Reading data from {data_folder}')
+        self.movies = pd.read_csv(os.path.join(data_folder, "movies.csv"))
+    
+    def import_ratings(self):
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        data_folder = os.path.join(BASE_DIR, self.folder)
+        print(f'Reading ratings from {data_folder}')
         self.ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
-        self.movies  = pd.read_csv(os.path.join(data_folder, "movies.csv"))
 
-    def create_mappings(self, session):
-        movies = session.query(Movie).all()
-        self.movie_titles = {movie.id: movie.title for movie in movies}
-        self.movie_inv_titles = {movie.title: movie.id for movie in movies}
+    def create_mappings(self):
+        self.movie_titles = {movie.id: movie.title for movie in self.movies}
+        self.movie_inv_titles = {movie.title: movie.id for movie in self.movies}
 
 
     # Generates a sparse utility matrix
@@ -75,8 +81,8 @@ class MovieRecommender:
 
     # calculate similarities for all pairs of movies
     def calculate_similarities(self):
-        X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = self.create_X(ratings)
-        movie_titles = dict(zip(self.movies['movieId'], self.movies['title']))
+        X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = self.create_X(self.ratings)
+        # movie_titles = dict(zip(self.movies['movieId'], self.movies['title']))
 
         X_csc = X.tocsc()  # shape = (n_users, n_items)
 
@@ -130,18 +136,23 @@ class MovieRecommender:
 
     # query database to find movies with highest similarity movies for a given movie id
     def topk_movies(self, session, movie_id, k):
-        rows = (
-            session.query(MovieSimilarity)
-                .filter(
-                    or_(
-                        MovieSimilarity.movie_id   == movie_id,
-                        MovieSimilarity.neighbor_id == movie_id
+        print('movie_id',  movie_id)
+        try:
+            rows = (
+                session.query(MovieSimilarity)
+                    .filter(
+                        or_(
+                            MovieSimilarity.movie_id   == movie_id,
+                            MovieSimilarity.neighbor_id == movie_id
+                        )
+                        
                     )
-                    
-                )
-                .order_by(MovieSimilarity.weighted_sim.desc())
-                .all()
-        )
+                    .order_by(MovieSimilarity.weighted_sim.desc())
+                    .all()
+            )
+            print('Rows', rows)
+        except (Exception):
+            session.rollback()
         session.close()
         return rows[:k]
 
@@ -163,19 +174,24 @@ class MovieRecommender:
     # find recommended movies from a set of seed movies
     def find_recommended_movies(self, session, seed_ratings):
         seed_movies = set([x[0] for x in seed_ratings])
-        
+        print('Seed movies', seed_movies)
         rated_movies = self.find_highly_rated_movies(seed_ratings)
+        print('Rated Movies', rated_movies)
         heap = []
         lists = []
         k_recommended = 10
 
         for i in range(len(rated_movies)):
+
             list = self.topk_movies(session, rated_movies[i], k_recommended)
+            print('balls2')
+            print(i, ':', list)
             lists.append(list)
             elem = list[0]
             score = -elem.weighted_sim # negative score so its descending order
             heap.append((score, i, 0, elem))
         heapq.heapify(heap)
+        print('Heap:', heap)
 
 
         result = []
@@ -199,10 +215,11 @@ class MovieRecommender:
     # recommends k movies based on given titles
     # expect movie_ratings = [(movie_title, rating), ...]
     def recommend_movies(self, session,  movie_ratings, k=5):
-        print([x.title for x in movie_ratings])
         seed_movies = [(self.movie_inv_titles[x.title], x.rating) for x in movie_ratings]
         rec_movie_ids = self.find_recommended_movies(session, seed_movies)[:k]
+        print('Movie ids:', rec_movie_ids)
         rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
+        print('Movie Titles', rec_movie_titles)
         return rec_movie_titles
 
     def verify_movie_in_db(self, title):
@@ -227,11 +244,6 @@ class MovieRecommender:
             movie_id = self.movie_inv_titles[movie]
             if not movie_id:
                 return False
-            print('Balls3')
-            print(movie)
-            print(value)
-            print(user_id)
-            print('Balls4')
             success = insert_rating_in_db(session, user_id, movie_id, value)
             return success
         except Exception:

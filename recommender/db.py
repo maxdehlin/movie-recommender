@@ -19,14 +19,15 @@ def make_session_factory(db_url: str):
     return sessionmaker(bind=engine)
 
 
-def insert_movies(session, movies):
-    batch = [
-        Movie(id=row.movieId, title=row.title, genres=row.genres)
-        for row in movies.itertuples()
-    ]
-    session.bulk_save_objects(batch)
-    session.commit()
-    session.close()
+# DEPRECATED: switching from Movies in database
+# def insert_movies(session, movies):
+#     batch = [
+#         Movie(id=row.movieId, title=row.title, genres=row.genres)
+#         for row in movies.itertuples()
+#     ]
+#     session.bulk_save_objects(batch)
+#     session.commit()
+#     session.close()
 
 
 def get_db():
@@ -90,7 +91,23 @@ def insert_user(session, google_id, email, name):
 
     return user
 
+# change this to not be a named relation. just an int and a movie_id int
+# def insert_rating_in_db(session, user_id, movie_id, value):
+#     try:
+#         rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
+#         if not rating:
+#             rating = Rating(user_id=user_id, movie_id=movie_id, value=value)
+#             session.add(rating)
+#             session.commit()
+#             session.refresh(rating)
+#             return True
+#         return False
+#     except Exception:
+#         session.rollback()
+#         raise
 
+
+# change this to not be a named relation. just an int and a movie_id int
 def insert_rating_in_db(session, user_id, movie_id, value):
     try:
         rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
@@ -99,41 +116,36 @@ def insert_rating_in_db(session, user_id, movie_id, value):
             session.add(rating)
             session.commit()
             session.refresh(rating)
-            print('Balls5')
-            print(movie_id)
-            print(value)
-            print(user_id)
-            print('Balls6')
             return True
         return False
     except Exception:
         session.rollback()
         raise
 
-
+# DEPRECATED: switching from Movies in database
 # db.py
-def load_movies_from_csv(session, csv_path):
-    movies_data = []
-    movie_ids = set()
-    with open(csv_path, newline="") as f:
-        reader = csv.DictReader(f)
-        for i, row in enumerate(reader, 1):
-            movie_id = int(row["movieId"])
-            movie_ids.add(movie_id)
-            movies_data.append({
-                "id": movie_id,
-                "title": row["title"],
-                "genres": row["genres"],
-            })
-            if i % 100_000 == 0:
-                print(f"Read {i} movies...")
+# def load_movies_from_csv(session, csv_path):
+#     movies_data = []
+#     movie_ids = set()
+#     with open(csv_path, newline="") as f:
+#         reader = csv.DictReader(f)
+#         for i, row in enumerate(reader, 1):
+#             movie_id = int(row["movieId"])
+#             movie_ids.add(movie_id)
+#             movies_data.append({
+#                 "id": movie_id,
+#                 "title": row["title"],
+#                 "genres": row["genres"],
+#             })
+#             if i % 100_000 == 0:
+#                 print(f"Read {i} movies...")
 
-    existing = {
-        mid for (mid,) in
-        session.query(Movie.id)
-               .filter(Movie.id.in_(movie_ids))
-               .all()
-    }
+#     existing = {
+#         mid for (mid,) in
+#         session.query(Movie.id)
+#                .filter(Movie.id.in_(movie_ids))
+#                .all()
+#     }
 
     new_movies = [m for m in movies_data if m["id"] not in existing]
     print(f"Inserting {len(new_movies)} new movies (skipped {len(movies_data) - len(new_movies)})")

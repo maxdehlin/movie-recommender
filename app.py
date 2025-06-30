@@ -73,7 +73,6 @@ if url.startswith("postgres://"):
 
 
 def verify_jwt(token: str = Depends(oauth2_scheme)):
-    print('token', token)
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("sub")
@@ -165,20 +164,19 @@ async def save_rating(
     session: Session = Depends(get_db)
 
 ):
-    
-    print('Balls1')
-    print(user_id)
-    print('Balls2')
-
     success = recommender.insert_rating(session, user_id, rating.movie, rating.value)
     return {"success": success}
 
 
+
 @app.post("/recommend")
-async def get_recommendations(seeds: Seeds, user_id: str = Depends(verify_jwt)):
+async def get_recommendations(
+    seeds: Seeds, user_id: str = Depends(verify_jwt),
+    session: Session = Depends(get_db)
+    ):
     print('seeds', seeds)
     # recommend movies based on seeds
-    message = recommender.recommend_movies(seeds.seeds)
+    message = recommender.recommend_movies(session, seeds.seeds)
 
     # save seeds
     success = bool(message)

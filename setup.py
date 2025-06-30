@@ -1,4 +1,4 @@
-from recommender.db import load_movies_from_csv, get_db, text
+from recommender.db import load_movies_from_csv, get_db, insert_all_similarities
 from recommender.recommender import MovieRecommender
 import os
 from dotenv import load_dotenv
@@ -7,9 +7,9 @@ load_dotenv()
 
 
 def main():
-    folder = "ml-latest-small"
+    folder = "ml-32"
     movies_path = f"recommender/data/{folder}/movies.csv"
-    ratings_path = f"recommender/data/{folder}/ratings.csv"
+    # ratings_path = f"recommender/data/{folder}/ratings.csv"
     url = os.getenv("TEST_DATABASE_URL")
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+psycopg2://", 1)
@@ -17,12 +17,18 @@ def main():
     # session = SessionLocal()
     session = next(get_db())
 
-    # recommender = MovieRecommender()
+    recommender = MovieRecommender()
 
     try:
-        load_movies_from_csv(session, movies_path)
+        print('Importing ratings')
+        recommender.import_ratings()
+        print('Calculating similarities')
+        anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims = recommender.calculate_similarities()
+        print('Saving Similarities')
+        insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims)
         session.commit()
     except:
+        print('Exception')
         session.rollback()
         raise
     finally:
