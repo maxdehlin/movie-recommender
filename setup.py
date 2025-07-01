@@ -23,9 +23,9 @@ def main():
         print('Importing ratings')
         recommender.import_ratings()
         print('Calculating similarities')
-        anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims = recommender.calculate_similarities()
+        anchor_ids, neighbor_ids, weighted_sims = recommender.calculate_similarities()
         print('Saving Similarities')
-        insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims)
+        insert_all_similarities(session, anchor_ids, neighbor_ids, weighted_sims)
         session.commit()
     except:
         print('Exception')

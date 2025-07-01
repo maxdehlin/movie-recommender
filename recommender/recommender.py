@@ -1,14 +1,17 @@
 import pandas as pd
 import numpy as np
 from scipy.sparse import csr_matrix
+from scipy.spatial.distance import cosine
 from dotenv import load_dotenv
 from sklearn.neighbors import NearestNeighbors
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 import heapq
 import os
-from recommender.models import MovieSimilarity, Movie, Rating
+from recommender.models import MovieSimilarity, Rating
 from recommender.db import get_db, insert_rating_in_db
+from collections import namedtuple
+
 
 
 url = os.getenv("DATABASE_URL")
@@ -19,6 +22,9 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
 small = 'data/ml-latest-small'
 big = 'data/ml-32m'
+
+
+Movie = namedtuple("Movie", ["id", "title", "genres"])
 
 
 class MovieRecommender:
@@ -32,11 +38,13 @@ class MovieRecommender:
         self.folder = folder
         self.ratings = None
         self.movies = None
+        self.movies_df = None
+        self.high_support_movies
 
         self.movie_titles = {}
         self.movie_inv_titles = {}
-        self.create_mappings(next(get_db()))
         self.import_movies()
+        self.create_mappings()
 
 
     def tester(self):
@@ -48,7 +56,8 @@ class MovieRecommender:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         data_folder = os.path.join(BASE_DIR, self.folder)
         print(f'Reading data from {data_folder}')
-        self.movies = pd.read_csv(os.path.join(data_folder, "movies.csv"))
+        self.movies_df = pd.read_csv(os.path.join(data_folder, "movies.csv"))
+
     
     def import_ratings(self):
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +65,13 @@ class MovieRecommender:
         print(f'Reading ratings from {data_folder}')
         self.ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
 
+
     def create_mappings(self):
+        movie_list = [
+            Movie(id=row["movieId"], title=row["title"], genres=row["genres"])
+            for _, row in self.movies_df.iterrows()
+        ]
+        self.movies = movie_list
         self.movie_titles = {movie.id: movie.title for movie in self.movies}
         self.movie_inv_titles = {movie.title: movie.id for movie in self.movies}
 
@@ -79,6 +94,7 @@ class MovieRecommender:
         
         return X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper
 
+
     # calculate similarities for all pairs of movies
     def calculate_similarities(self):
         X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = self.create_X(self.ratings)
@@ -86,18 +102,29 @@ class MovieRecommender:
 
         X_csc = X.tocsc()  # shape = (n_users, n_items)
 
+        self.X_csc = X_csc
+        self.movie_mapper = movie_mapper
+        self.movie_inv_mapper = movie_inv_mapper
+
         n_items = X_csc.shape[1]
         # supports[i] = set of user‐indices who rated item i
         supports = []
         for i in range(n_items):
+            movie_id = movie_inv_mapper[i]
             # nonzero()[0] gives the row‐indices of nonzero entries in column i
-            users_who_rated_i = set(X_csc[:, i].nonzero()[0])
-            supports.append(users_who_rated_i)
+            users_who_rated_i = len(set(X_csc[:, i].nonzero()[0]))
+            supports.append((movie_id, users_who_rated_i))
 
-        # fit NearestNeighbors on the (n_items × n_users) transpose:
+        top_n = 10000
+        top_items = sorted(supports, key=lambda x: x[1], reverse=True)[:top_n]
+        top_movie_ids = set(movie_id for movie_id, _ in top_items)
+        supports_dict = {movie_id: users for movie_id, users in top_items}
+
+        self.high_support_movies = top_movie_ids
+
         item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
-
-        K = 15
+ 
+        K = 10
         nn = NearestNeighbors(
             n_neighbors=K + 1,
             metric="cosine",
@@ -111,32 +138,60 @@ class MovieRecommender:
         alpha = 10  # shrinkage parameter
         anchor_ids = []
         neighbor_ids = []
-        raw_sims   = []
-        co_counts  = []
+        # raw_sims   = []
+        # co_counts  = []
         weighted_sims = []
 
         for i in range(n_items):
-            anchor_id = movie_inv_mapper[i]
-            for rank in range(1, K+1):
+            movie_id_i = movie_inv_mapper[i]
+            if movie_id_i not in top_movie_ids:
+                continue
+
+            for rank in range(1, K + 1):
                 j = indices[i][rank]
-                neighbor_id = movie_inv_mapper[j]
+                movie_id_j = movie_inv_mapper[j]
+                if movie_id_j not in top_movie_ids:
+                    continue
 
-                if anchor_id < neighbor_id:
+                if movie_id_i < movie_id_j:
                     raw_sim = 1.0 - distances[i][rank]
-                    co_cnt  = len(supports[i] & supports[j])
-                    shrink  = co_cnt / (co_cnt + alpha)
-                    w_sim   = raw_sim * shrink
+                    co_cnt = len(supports_dict[movie_id_i] & supports_dict[movie_id_j])
+                    shrink = co_cnt / (co_cnt + alpha)
+                    w_sim = raw_sim * shrink
 
-                    anchor_ids.append(int(anchor_id))
-                    neighbor_ids.append(int(neighbor_id))
-                    raw_sims.append(float(raw_sim))
-                    co_counts.append(co_cnt)
-                    weighted_sims.append(float(w_sim))
-        return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
+                    anchor_ids.append(movie_id_i)
+                    neighbor_ids.append(movie_id_j)
+                    weighted_sims.append(w_sim)
+        # return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
+        return anchor_ids, neighbor_ids, weighted_sims
+    
+    
+    def high_support_similarities(self, movie_id):
+        # sparse user vector for the rare movie
+        movie_col = self.movie_mapper[movie_id]
+        v = self.X_csc[:, movie_col]  # shape = (n_users, 1)
+
+        alpha = 10 # shrinkage factor
+        sims = []
+        for common_id in self.high_support_movies:
+            j = self.movie_mapper[common_id]
+            vj = self.X_csc[:, j]
+            co_cnt = len(set(v.nonzero()[0]) & set(vj.nonzero()[0]))
+            if co_cnt == 0:
+                continue
+            raw_sim = 1.0 - cosine(v.toarray().ravel(), vj.toarray().ravel())
+            shrink = co_cnt / (co_cnt + alpha)
+            sims.append((common_id, raw_sim * shrink))
+
+        # take top-K
+        return sorted(sims, key=lambda x: x[1], reverse=True)
+
 
     # query database to find movies with highest similarity movies for a given movie id
     def topk_movies(self, session, movie_id, k):
-        print('movie_id',  movie_id)
+        # if movie_id is not in moviesims then calculate similarity with high-support movies
+        if movie_id not in self.high_support_movies:
+            return self.high_support_similarities(movie_id)[:k]
         try:
             rows = (
                 session.query(MovieSimilarity)
@@ -150,11 +205,11 @@ class MovieRecommender:
                     .order_by(MovieSimilarity.weighted_sim.desc())
                     .all()
             )
-            print('Rows', rows)
         except (Exception):
             session.rollback()
         session.close()
         return rows[:k]
+    
 
     # find highest rated movies from a set of rated seed movies
     def find_highly_rated_movies(self, seed_movies):
@@ -170,28 +225,21 @@ class MovieRecommender:
         return output
 
 
-
     # find recommended movies from a set of seed movies
     def find_recommended_movies(self, session, seed_ratings):
         seed_movies = set([x[0] for x in seed_ratings])
-        print('Seed movies', seed_movies)
         rated_movies = self.find_highly_rated_movies(seed_ratings)
-        print('Rated Movies', rated_movies)
         heap = []
         lists = []
         k_recommended = 10
 
         for i in range(len(rated_movies)):
-
             list = self.topk_movies(session, rated_movies[i], k_recommended)
-            print('balls2')
-            print(i, ':', list)
             lists.append(list)
             elem = list[0]
             score = -elem.weighted_sim # negative score so its descending order
             heap.append((score, i, 0, elem))
         heapq.heapify(heap)
-        print('Heap:', heap)
 
 
         result = []
@@ -217,9 +265,7 @@ class MovieRecommender:
     def recommend_movies(self, session,  movie_ratings, k=5):
         seed_movies = [(self.movie_inv_titles[x.title], x.rating) for x in movie_ratings]
         rec_movie_ids = self.find_recommended_movies(session, seed_movies)[:k]
-        print('Movie ids:', rec_movie_ids)
         rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
-        print('Movie Titles', rec_movie_titles)
         return rec_movie_titles
 
     def verify_movie_in_db(self, title):

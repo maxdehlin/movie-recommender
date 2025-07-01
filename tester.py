@@ -1,5 +1,8 @@
+from sqlalchemy import engine
 from schemas import Seed
 from recommender.recommender import MovieRecommender
+from recommender.models import Base, Rating
+
 
 seeds = [
     Seed(title='Toy Story (1995)', rating=5.0),
@@ -17,8 +20,8 @@ seeds = [
 
 
 # movies = recommend_movies(seeds, 100)
-recommender = MovieRecommender()
-recommender.tester('nothing')
+# recommender = MovieRecommender()
+# recommender.tester('nothing')
 
 
 # recommender.create_mappings()

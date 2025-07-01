@@ -59,20 +59,6 @@ def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_coun
     session.commit()
 
 
-# def insert_user(session, google_id, email, name):
-#     try:
-#         user = session.query(User).filter_by(google_id=google_id).first()
-#     except Exception:
-#         session.rollback()
-#         raise
-#     if not user:
-#         user = User(google_id=google_id, email=email, name=name)
-#         session.add(user)
-#         session.commit()
-#         session.refresh(user)
-#     return user
-
-
 def insert_user(session, google_id, email, name):
     try:
         user = session.query(User).filter_by(google_id=google_id).first()
@@ -91,21 +77,6 @@ def insert_user(session, google_id, email, name):
 
     return user
 
-# change this to not be a named relation. just an int and a movie_id int
-# def insert_rating_in_db(session, user_id, movie_id, value):
-#     try:
-#         rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
-#         if not rating:
-#             rating = Rating(user_id=user_id, movie_id=movie_id, value=value)
-#             session.add(rating)
-#             session.commit()
-#             session.refresh(rating)
-#             return True
-#         return False
-#     except Exception:
-#         session.rollback()
-#         raise
-
 
 # change this to not be a named relation. just an int and a movie_id int
 def insert_rating_in_db(session, user_id, movie_id, value):
@@ -123,7 +94,6 @@ def insert_rating_in_db(session, user_id, movie_id, value):
         raise
 
 # DEPRECATED: switching from Movies in database
-# db.py
 # def load_movies_from_csv(session, csv_path):
 #     movies_data = []
 #     movie_ids = set()
@@ -147,11 +117,11 @@ def insert_rating_in_db(session, user_id, movie_id, value):
 #                .all()
 #     }
 
-    new_movies = [m for m in movies_data if m["id"] not in existing]
-    print(f"Inserting {len(new_movies)} new movies (skipped {len(movies_data) - len(new_movies)})")
+#     new_movies = [m for m in movies_data if m["id"] not in existing]
+#     print(f"Inserting {len(new_movies)} new movies (skipped {len(movies_data) - len(new_movies)})")
 
-    session.bulk_insert_mappings(Movie, new_movies)
-    session.commit()
+#     session.bulk_insert_mappings(Movie, new_movies)
+#     session.commit()
 
 
 def reset_and_populate(session):
