@@ -4,7 +4,7 @@ import csv
 
 from sqlalchemy import create_engine, String, text, and_
 from sqlalchemy.orm import sessionmaker
-from recommender.models import Base, MovieSimilarity, Movie, User, Rating
+from recommender.models import Base, MovieSimilarity, User, Rating
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import OperationalError
 load_dotenv()
@@ -38,18 +38,16 @@ def get_db():
         db.close()
 
 
-def insert_all_similarities(session, anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims):
+def insert_all_similarities(session, anchor_ids, neighbor_ids, weighted_sims):
     batch = []
     # anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
-    for (a_id, n_id, r_sim, c_cnt, w_sim) in zip(
-        anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
+    for (a_id, n_id, w_sim) in zip(
+        anchor_ids, neighbor_ids, weighted_sims
     ):
         batch.append(
             MovieSimilarity(
                 movie_id=a_id,
                 neighbor_id=n_id,
-                raw_sim=r_sim,
-                co_count=c_cnt,
                 weighted_sim=w_sim,
             )
         )
@@ -130,8 +128,9 @@ def reset_and_populate(session):
     session.commit()
 
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 
-SessionLocal = make_session_factory(DATABASE_URL)
+engine = create_engine(DATABASE_URL, echo=True)
+SessionLocal = sessionmaker(bind=engine)

@@ -39,7 +39,7 @@ class MovieRecommender:
         self.ratings = None
         self.movies = None
         self.movies_df = None
-        self.high_support_movies
+        self.high_support_movies = None
 
         self.movie_titles = {}
         self.movie_inv_titles = {}
@@ -55,14 +55,14 @@ class MovieRecommender:
         # get the directory where this .py file lives
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         data_folder = os.path.join(BASE_DIR, self.folder)
-        print(f'Reading data from {data_folder}')
+        print(f'Reading movies from {data_folder}/movies.csv')
         self.movies_df = pd.read_csv(os.path.join(data_folder, "movies.csv"))
 
     
     def import_ratings(self):
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         data_folder = os.path.join(BASE_DIR, self.folder)
-        print(f'Reading ratings from {data_folder}')
+        print(f'Reading ratings from {data_folder}/ratings.csv')
         self.ratings = pd.read_csv(os.path.join(data_folder, "ratings.csv"))
 
 
@@ -112,7 +112,7 @@ class MovieRecommender:
         for i in range(n_items):
             movie_id = movie_inv_mapper[i]
             # nonzero()[0] gives the row‐indices of nonzero entries in column i
-            users_who_rated_i = len(set(X_csc[:, i].nonzero()[0]))
+            users_who_rated_i = set(X_csc[:, i].nonzero()[0])
             supports.append((movie_id, users_who_rated_i))
 
         top_n = 10000
@@ -159,13 +159,13 @@ class MovieRecommender:
                     shrink = co_cnt / (co_cnt + alpha)
                     w_sim = raw_sim * shrink
 
-                    anchor_ids.append(movie_id_i)
-                    neighbor_ids.append(movie_id_j)
-                    weighted_sims.append(w_sim)
+                    anchor_ids.append(int(movie_id_i))
+                    neighbor_ids.append(int(movie_id_j))
+                    weighted_sims.append(float(w_sim))
         # return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
         return anchor_ids, neighbor_ids, weighted_sims
     
-    
+
     def high_support_similarities(self, movie_id):
         # sparse user vector for the rare movie
         movie_col = self.movie_mapper[movie_id]
@@ -181,7 +181,12 @@ class MovieRecommender:
                 continue
             raw_sim = 1.0 - cosine(v.toarray().ravel(), vj.toarray().ravel())
             shrink = co_cnt / (co_cnt + alpha)
-            sims.append((common_id, raw_sim * shrink))
+
+            sims.append(MovieSimilarity(
+                movie_id=int(movie_id),
+                neighbor_id=int(common_id),
+                weighted_sim=float(raw_sim * shrink)
+            ))
 
         # take top-K
         return sorted(sims, key=lambda x: x[1], reverse=True)
@@ -189,10 +194,11 @@ class MovieRecommender:
 
     # query database to find movies with highest similarity movies for a given movie id
     def topk_movies(self, session, movie_id, k):
-        # if movie_id is not in moviesims then calculate similarity with high-support movies
-        if movie_id not in self.high_support_movies:
-            return self.high_support_similarities(movie_id)[:k]
         try:
+            # if movie is obscure, compute similarity with common movies only.
+            if movie_id not in self.high_support_movies:
+                print('Obscure movie found. Finding similar common movies...')
+                return self.high_support_similarities(movie_id)[:k]
             rows = (
                 session.query(MovieSimilarity)
                     .filter(
@@ -241,7 +247,6 @@ class MovieRecommender:
             heap.append((score, i, 0, elem))
         heapq.heapify(heap)
 
-
         result = []
         while heap:
             score, i, j, elem = heapq.heappop(heap)
@@ -260,6 +265,7 @@ class MovieRecommender:
                 heapq.heappush(heap, (nxt_score, i, j + 1, nxt))
         return result
 
+
     # recommends k movies based on given titles
     # expect movie_ratings = [(movie_title, rating), ...]
     def recommend_movies(self, session,  movie_ratings, k=5):
@@ -268,6 +274,7 @@ class MovieRecommender:
         rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
         return rec_movie_titles
 
+
     def verify_movie_in_db(self, title):
         exists = title in self.movie_inv_titles
         if exists:
@@ -275,6 +282,7 @@ class MovieRecommender:
         else:
             print("Movie does not exist")
         return exists
+
 
     def get_user_ratings(self, session, user_id):
         try:
@@ -285,6 +293,7 @@ class MovieRecommender:
             print(f"Failed to fetch ratings for user {user_id}: {e}")
             return []
 
+
     def insert_rating(self, session, user_id, movie, value):
         try:
             movie_id = self.movie_inv_titles[movie]
@@ -294,7 +303,3 @@ class MovieRecommender:
             return success
         except Exception:
             raise
-
-
-
-            

@@ -1,4 +1,4 @@
-from recommender.db import load_movies_from_csv, get_db, insert_all_similarities
+from recommender.db import get_db, insert_all_similarities
 from recommender.recommender import MovieRecommender
 import os
 from dotenv import load_dotenv
@@ -10,9 +10,9 @@ def main():
     folder = "ml-32"
     movies_path = f"recommender/data/{folder}/movies.csv"
     # ratings_path = f"recommender/data/{folder}/ratings.csv"
-    url = os.getenv("TEST_DATABASE_URL")
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+    # url = os.getenv("TEST_DATABASE_URL")
+    # if url.startswith("postgres://"):
+    #     url = url.replace("postgres://", "postgresql+psycopg2://", 1)
     # SessionLocal = make_session_factory(url)
     # session = SessionLocal()
     session = next(get_db())

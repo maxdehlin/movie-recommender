@@ -26,23 +26,10 @@ fly proxy 15432:5432 -a movierec-db
 psql postgresql://movie_recommender_fragrant_shape_7289:REMOTE_POSTGRES_PASSWORD@localhost:15432/movie_recommender_fragrant_shape_7289
 
 
-
-
-
-
-
-
-
 fly ssh console -a movie-recommender-fragrant-shape-7289
 
 fly ssh sftp shell -a movie-recommender-fragrant-shape-7289
 put recommender/data/ml-32m/ratings.csv /app/recommender/data/ml-32m/
-
-
-
-
-
-
 
 
 # update sql tables with alembic
