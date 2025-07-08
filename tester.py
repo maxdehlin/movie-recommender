@@ -19,9 +19,12 @@ seeds = [
 ]
 
 
+
+
+
 # movies = recommend_movies(seeds, 100)
-# recommender = MovieRecommender()
-# recommender.tester('nothing')
+recommender = MovieRecommender()
+recommender.tester()
 
 
 # recommender.create_mappings()

@@ -128,7 +128,7 @@ def reset_and_populate(session):
     session.commit()
 
 
-DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 

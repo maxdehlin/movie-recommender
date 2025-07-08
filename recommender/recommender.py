@@ -43,12 +43,16 @@ class MovieRecommender:
 
         self.movie_titles = {}
         self.movie_inv_titles = {}
+        print("Initializing recommender...")
+        self.import_ratings()
         self.import_movies()
+        self.calculate_similarities()
         self.create_mappings()
 
 
     def tester(self):
-        print(self.movie_inv_titles)
+
+        print(self.high_support_movies)
 
     
     def import_movies(self):
@@ -117,10 +121,11 @@ class MovieRecommender:
 
         top_n = 10000
         top_items = sorted(supports, key=lambda x: x[1], reverse=True)[:top_n]
-        top_movie_ids = set(movie_id for movie_id, _ in top_items)
+        top_movie_ids = set(int(movie_id) for movie_id, _ in top_items)
         supports_dict = {movie_id: users for movie_id, users in top_items}
 
         self.high_support_movies = top_movie_ids
+        
 
         item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
  
@@ -167,6 +172,7 @@ class MovieRecommender:
     
 
     def high_support_similarities(self, movie_id):
+        print('running high support similarities')
         # sparse user vector for the rare movie
         movie_col = self.movie_mapper[movie_id]
         v = self.X_csc[:, movie_col]  # shape = (n_users, 1)
@@ -189,16 +195,25 @@ class MovieRecommender:
             ))
 
         # take top-K
-        return sorted(sims, key=lambda x: x[1], reverse=True)
+        print('returning:', sims[0])
+        return sorted(sims, key=lambda x: x.weighted_sim, reverse=True)
 
 
     # query database to find movies with highest similarity movies for a given movie id
     def topk_movies(self, session, movie_id, k):
-        try:
-            # if movie is obscure, compute similarity with common movies only.
-            if movie_id not in self.high_support_movies:
-                print('Obscure movie found. Finding similar common movies...')
-                return self.high_support_similarities(movie_id)[:k]
+        rows = None
+        # try:
+        # if movie is obscure, compute similarity with common movies only.
+        if movie_id not in self.movies:
+            print('Movie not found in self.movies:', movie_id)
+
+        if movie_id not in self.high_support_movies:
+            print('High support movies:', self.high_support_movies)
+            print('Obscure movie found. Finding similar common movies...')
+            print('Movie ID:', movie_id)
+            rows = self.high_support_similarities(movie_id)[:k]
+        else:
+            print('Common movie found...')
             rows = (
                 session.query(MovieSimilarity)
                     .filter(
@@ -211,8 +226,9 @@ class MovieRecommender:
                     .order_by(MovieSimilarity.weighted_sim.desc())
                     .all()
             )
-        except (Exception):
-            session.rollback()
+        # except Exception as e:
+        #     print('Error:', e)
+        #     session.rollback()
         session.close()
         return rows[:k]
     

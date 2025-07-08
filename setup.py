@@ -10,7 +10,7 @@ def main():
     folder = "ml-32"
     movies_path = f"recommender/data/{folder}/movies.csv"
     # ratings_path = f"recommender/data/{folder}/ratings.csv"
-    # url = os.getenv("TEST_DATABASE_URL")
+    # url = os.getenv("DATABASE_URL")
     # if url.startswith("postgres://"):
     #     url = url.replace("postgres://", "postgresql+psycopg2://", 1)
     # SessionLocal = make_session_factory(url)
