@@ -40,6 +40,9 @@ def get_db():
 
 def insert_all_similarities(session, anchor_ids, neighbor_ids, weighted_sims):
     batch = []
+
+    session.query(MovieSimilarity).delete()
+    session.commit()
     # anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
     for (a_id, n_id, w_sim) in zip(
         anchor_ids, neighbor_ids, weighted_sims

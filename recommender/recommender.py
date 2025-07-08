@@ -120,11 +120,19 @@ class MovieRecommender:
             supports.append((movie_id, users_who_rated_i))
 
         top_n = 10000
-        top_items = sorted(supports, key=lambda x: x[1], reverse=True)[:top_n]
+        top_items = sorted(supports, key=lambda x: len(x[1]), reverse=True)[:top_n]
+
+        for item, users in top_items:
+            # print('ID:', item, " ---Support:", len(users))
+            if int(item) == 79132:
+                print('balls5')
+
+
         top_movie_ids = set(int(movie_id) for movie_id, _ in top_items)
         supports_dict = {movie_id: users for movie_id, users in top_items}
 
         self.high_support_movies = top_movie_ids
+
         
 
         item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
