@@ -1,6 +1,8 @@
 import time
 import os
+import asyncio
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -15,6 +17,8 @@ from recommender.recommender import MovieRecommender
 from schemas import Seeds
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
+
 from jose import jwt, JWTError
 
 
@@ -27,7 +31,6 @@ APP_ENV = os.getenv("APP_ENV")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
-recommender = MovieRecommender()
 
 # load_dotenv()
 oauth = OAuth(config)
@@ -42,11 +45,23 @@ oauth.register(
 # JWT settings
 JWT_SECRET = config("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_SECONDS = 3600 
-app = FastAPI()
+JWT_EXPIRE_SECONDS = 3600
 
-from fastapi.middleware.cors import CORSMiddleware
 
+# Define app with lifespan recommender
+recommender = None
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print('DICK')
+    global recommender
+    loop = asyncio.get_event_loop()
+    recommender = await loop.run_in_executor(None, MovieRecommender)
+    print('Recommender is ready!')
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
