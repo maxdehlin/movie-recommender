@@ -20,10 +20,9 @@ def main():
     recommender = MovieRecommender()
 
     try:
-        print('Importing ratings')
-        recommender.import_ratings()
+        # recommender.import_ratings()
         print('Calculating similarities')
-        anchor_ids, neighbor_ids, weighted_sims = recommender.calculate_similarities()
+        anchor_ids, neighbor_ids, weighted_sims = recommender.calculate_similarities_chunked()
         print('Saving Similarities')
         insert_all_similarities(session, anchor_ids, neighbor_ids, weighted_sims)
         session.commit()
