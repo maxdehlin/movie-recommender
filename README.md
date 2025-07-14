@@ -26,6 +26,7 @@ fly proxy 15432:5432 -a movierec-db
 psql postgresql://movie_recommender_fragrant_shape_7289:REMOTE_POSTGRES_PASSWORD@localhost:15432/movie_recommender_fragrant_shape_7289
 
 
+
 fly ssh console -a movie-recommender-fragrant-shape-7289
 
 fly ssh sftp shell -a movie-recommender-fragrant-shape-7289

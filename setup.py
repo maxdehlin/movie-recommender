@@ -7,8 +7,10 @@ load_dotenv()
 
 
 def main():
-    folder = "ml-32"
-    movies_path = f"recommender/data/{folder}/movies.csv"
+    big = "data/ml-32"
+    small = 'data/ml-latest-small'
+    folder = small
+    movies_path = f"recommender/{folder}/movies.csv"
     # ratings_path = f"recommender/data/{folder}/ratings.csv"
     # url = os.getenv("DATABASE_URL")
     # if url.startswith("postgres://"):
@@ -22,7 +24,7 @@ def main():
     try:
         # recommender.import_ratings()
         print('Calculating similarities')
-        anchor_ids, neighbor_ids, weighted_sims = recommender.calculate_similarities_chunked()
+        anchor_ids, neighbor_ids, weighted_sims = recommender.calculate_similarities()
         print('Saving Similarities')
         insert_all_similarities(session, anchor_ids, neighbor_ids, weighted_sims)
         session.commit()

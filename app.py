@@ -52,7 +52,6 @@ JWT_EXPIRE_SECONDS = 3600
 recommender = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print('DICK')
     global recommender
     loop = asyncio.get_event_loop()
     recommender = await loop.run_in_executor(None, MovieRecommender)

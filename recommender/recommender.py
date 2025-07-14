@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import math
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cosine
 from dotenv import load_dotenv
@@ -11,7 +10,7 @@ import heapq
 import os
 from recommender.models import MovieSimilarity, Rating
 from recommender.db import get_db, insert_rating_in_db
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 
 
 
@@ -29,7 +28,7 @@ Movie = namedtuple("Movie", ["id", "title", "genres"])
 
 
 class MovieRecommender:
-    def __init__(self, folder='data/ml-32m'):
+    def __init__(self, folder=small):
         # self.db_url = db_url or os.getenv('DATABASE_URL')
         # if not self.db_url:
         #     raise RuntimeError("DATABASE_URL not set")
@@ -41,19 +40,13 @@ class MovieRecommender:
         self.movies = None
         self.movies_df = None
         self.high_support_movies = None
-        self.BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 
         self.movie_titles = {}
         self.movie_inv_titles = {}
         print("Initializing recommender...")
-        # self.import_ratings()
-
-
-        self.anchor_ids, self.neighbor_ids, self.weighted_sims = self.calculate_similarities_chunked()
-
+        self.import_ratings()
         self.import_movies()
-
+        self.calculate_similarities()
         self.create_mappings()
 
 
@@ -88,154 +81,98 @@ class MovieRecommender:
 
 
     # Generates a sparse utility matrix
-    # def create_X(self, df):
-    #     M = df['userId'].nunique()
-    #     N = df['movieId'].nunique()
+    def create_X(self, df):
+        M = df['userId'].nunique()
+        N = df['movieId'].nunique()
 
-    #     user_mapper = dict(zip(np.unique(df["userId"]), list(range(M))))
-    #     movie_mapper = dict(zip(np.unique(df["movieId"]), list(range(N))))
+        user_mapper = dict(zip(np.unique(df["userId"]), list(range(M))))
+        movie_mapper = dict(zip(np.unique(df["movieId"]), list(range(N))))
         
-    #     user_inv_mapper = dict(zip(list(range(M)), np.unique(df["userId"])))
-    #     movie_inv_mapper = dict(zip(list(range(N)), np.unique(df["movieId"])))
+        user_inv_mapper = dict(zip(list(range(M)), np.unique(df["userId"])))
+        movie_inv_mapper = dict(zip(list(range(N)), np.unique(df["movieId"])))
         
-    #     user_index = [user_mapper[i] for i in df['userId']]
-    #     item_index = [movie_mapper[i] for i in df['movieId']]
+        user_index = [user_mapper[i] for i in df['userId']]
+        item_index = [movie_mapper[i] for i in df['movieId']]
 
-    #     X = csr_matrix((df["rating"], (user_index,item_index)), shape=(M,N))
+        X = csr_matrix((df["rating"], (user_index,item_index)), shape=(M,N))
         
-    #     return X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper
+        return X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper
 
 
     # calculate similarities for all pairs of movies
-    # def calculate_similarities(self):
-    #     X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = self.create_X(self.ratings)
-    #     # movie_titles = dict(zip(self.movies['movieId'], self.movies['title']))
+    def calculate_similarities(self):
+        X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = self.create_X(self.ratings)
+        # movie_titles = dict(zip(self.movies['movieId'], self.movies['title']))
 
-    #     X_csc = X.tocsc()  # shape = (n_users, n_items)
+        X_csc = X.tocsc()  # shape = (n_users, n_items)
 
-    #     self.X_csc = X_csc
-    #     self.movie_mapper = movie_mapper
-    #     self.movie_inv_mapper = movie_inv_mapper
+        self.X_csc = X_csc
+        self.movie_mapper = movie_mapper
+        self.movie_inv_mapper = movie_inv_mapper
 
-    #     n_items = X_csc.shape[1]
-    #     # supports[i] = set of user‐indices who rated item i
-    #     supports = []
-    #     for i in range(n_items):
-    #         movie_id = movie_inv_mapper[i]
-    #         # nonzero()[0] gives the row‐indices of nonzero entries in column i
-    #         users_who_rated_i = set(X_csc[:, i].nonzero()[0])
-    #         supports.append((movie_id, users_who_rated_i))
+        n_items = X_csc.shape[1]
+        # supports[i] = set of user‐indices who rated item i
+        supports = []
+        for i in range(n_items):
+            movie_id = movie_inv_mapper[i]
+            # nonzero()[0] gives the row‐indices of nonzero entries in column i
+            users_who_rated_i = set(X_csc[:, i].nonzero()[0])
+            supports.append((movie_id, users_who_rated_i))
 
-    #     top_n = 10000
-    #     top_items = sorted(supports, key=lambda x: len(x[1]), reverse=True)[:top_n]
-
-    #     for item, users in top_items:
-    #         # print('ID:', item, " ---Support:", len(users))
-    #         if int(item) == 79132:
-    #             print('balls5')
+        top_n = 10000
+        top_items = sorted(supports, key=lambda x: len(x[1]), reverse=True)[:top_n]
 
 
-    #     top_movie_ids = set(int(movie_id) for movie_id, _ in top_items)
-    #     supports_dict = {movie_id: users for movie_id, users in top_items}
+        top_movie_ids = set(int(movie_id) for movie_id, _ in top_items)
+        supports_dict = {movie_id: users for movie_id, users in top_items}
 
-    #     self.high_support_movies = top_movie_ids
+        self.high_support_movies = top_movie_ids
 
         
 
-    #     item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
+        item_features = X_csc.T  # now shape = (n_items, n_users), still sparse
  
-    #     K = 10
-    #     nn = NearestNeighbors(
-    #         n_neighbors=K + 1,
-    #         metric="cosine",
-    #         algorithm="brute",
-    #         n_jobs=-1,
-    #     )
-    #     nn.fit(item_features)
+        K = 10
+        nn = NearestNeighbors(
+            n_neighbors=K + 1,
+            metric="cosine",
+            algorithm="brute",
+            n_jobs=-1,
+        )
+        nn.fit(item_features)
 
-    #     distances, indices = nn.kneighbors(item_features, return_distance=True)
+        distances, indices = nn.kneighbors(item_features, return_distance=True)
 
-    #     alpha = 10  # shrinkage parameter
-    #     anchor_ids = []
-    #     neighbor_ids = []
-    #     # raw_sims   = []
-    #     # co_counts  = []
-    #     weighted_sims = []
-
-    #     for i in range(n_items):
-    #         movie_id_i = movie_inv_mapper[i]
-    #         if movie_id_i not in top_movie_ids:
-    #             continue
-
-    #         for rank in range(1, K + 1):
-    #             j = indices[i][rank]
-    #             movie_id_j = movie_inv_mapper[j]
-    #             if movie_id_j not in top_movie_ids:
-    #                 continue
-
-    #             if movie_id_i < movie_id_j:
-    #                 raw_sim = 1.0 - distances[i][rank]
-    #                 co_cnt = len(supports_dict[movie_id_i] & supports_dict[movie_id_j])
-    #                 shrink = co_cnt / (co_cnt + alpha)
-    #                 w_sim = raw_sim * shrink
-
-    #                 anchor_ids.append(int(movie_id_i))
-    #                 neighbor_ids.append(int(movie_id_j))
-    #                 weighted_sims.append(float(w_sim))
-    #     # return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
-    #     return anchor_ids, neighbor_ids, weighted_sims
-
-
-    def calculate_similarities_chunked(self, chunksize=100_000, top_n=10000, k=10, alpha=10):
-        ratings_path = os.path.join(self.BASE_DIR, self.folder, "ratings.csv")
-        print(f"Streaming ratings from {ratings_path} in chunks...")
-
-        # Build movie to users map
-        movie_user_sets = defaultdict(set)
-        user_movie_sets = defaultdict(set)
-
-        for chunk in pd.read_csv(ratings_path, chunksize=chunksize):
-            for _, row in chunk.iterrows():
-                user = int(row["userId"])
-                movie = int(row["movieId"])
-                movie_user_sets[movie].add(user)
-                user_movie_sets[user].add(movie)
-
-        print(f"Collected {len(movie_user_sets)} movies and {len(user_movie_sets)} users.")
-
-        # Get top supported movies
-        support_list = [(movie, users) for movie, users in movie_user_sets.items()]
-        top_items = sorted(support_list, key=lambda x: len(x[1]), reverse=True)[:top_n]
-        top_movie_ids = set(movie for movie, _ in top_items)
-        self.high_support_movies = top_movie_ids
-
-        # Compute pairwise similarities
+        alpha = 10  # shrinkage parameter
         anchor_ids = []
         neighbor_ids = []
+        # raw_sims   = []
+        # co_counts  = []
         weighted_sims = []
 
-        # Precompute dot products and supports
-        movie_list = list(top_movie_ids)
-        for i, m1 in enumerate(movie_list):
-            users1 = movie_user_sets[m1]
-            for j in range(i + 1, len(movie_list)):
-                m2 = movie_list[j]
-                users2 = movie_user_sets[m2]
+        for i in range(n_items):
+            movie_id_i = movie_inv_mapper[i]
+            if movie_id_i not in top_movie_ids:
+                continue
 
-                co_count = len(users1 & users2)
-                if co_count == 0:
+            for rank in range(1, K + 1):
+                j = indices[i][rank]
+                movie_id_j = movie_inv_mapper[j]
+                if movie_id_j not in top_movie_ids:
                     continue
 
-                raw_sim = co_count / math.sqrt(len(users1) * len(users2))
-                shrink = co_count / (co_count + alpha)
-                w_sim = raw_sim * shrink
+                if movie_id_i < movie_id_j:
+                    raw_sim = 1.0 - distances[i][rank]
+                    co_cnt = len(supports_dict[movie_id_i] & supports_dict[movie_id_j])
+                    shrink = co_cnt / (co_cnt + alpha)
+                    w_sim = raw_sim * shrink
 
-                anchor_ids.append(m1)
-                neighbor_ids.append(m2)
-                weighted_sims.append(w_sim)
-
-        print(f"Computed {len(weighted_sims)} similarities.")
+                    anchor_ids.append(int(movie_id_i))
+                    neighbor_ids.append(int(movie_id_j))
+                    weighted_sims.append(float(w_sim))
+        # return anchor_ids, neighbor_ids, raw_sims, co_counts, weighted_sims
         return anchor_ids, neighbor_ids, weighted_sims
+    
 
     def high_support_similarities(self, movie_id):
         print('running high support similarities')
@@ -374,6 +311,19 @@ class MovieRecommender:
             session.rollback()
             print(f"Failed to fetch ratings for user {user_id}: {e}")
             return []
+        
+    def get_user_ratings(self, session, user_id):
+        ratings = session.query(Rating).filter(Rating.user_id == user_id).all()
+        result = []
+        for r in ratings:
+            title = self.movie_titles.get(r.movie_id)
+            if title:
+                result.append({
+                    "title": title,
+                    "rating": r.value,
+                    "movie_id": r.movie_id,
+                })
+        return result
 
 
     def insert_rating(self, session, user_id, movie, value):
