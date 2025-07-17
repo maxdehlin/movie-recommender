@@ -27,7 +27,7 @@ seeds = [
 # recommender = MovieRecommender()
 # recommender.tester()
 
-string = 'Toy Story 2 (1999)'
+string = 'Thelotr'
 normalize(string)
 
 
