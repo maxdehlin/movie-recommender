@@ -2,6 +2,7 @@ from sqlalchemy import engine
 from schemas import Seed
 from recommender.recommender import MovieRecommender
 from recommender.models import Base, Rating
+from recommender.helpers import normalize
 
 
 seeds = [
@@ -23,8 +24,11 @@ seeds = [
 
 
 # movies = recommend_movies(seeds, 100)
-recommender = MovieRecommender()
-recommender.tester()
+# recommender = MovieRecommender()
+# recommender.tester()
+
+string = 'Toy Story 2 (1999)'
+normalize(string)
 
 
 # recommender.create_mappings()

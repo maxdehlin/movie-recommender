@@ -146,16 +146,21 @@ async def google_callback(
     print(FRONTEND_URL)
     return RedirectResponse(redirect_url)
 
+
+# success: whether the movie exists in the db
+# detail: the official title of the movie for display
 @app.get("/verify_movie")
 async def verify_movie(
     movie: str,
     user_id: str = Depends(verify_jwt)
 ):
-    result = recommender.verify_movie_in_db(movie)
-    if result:
-        message = "Movie verified"
+    title = recommender.verify_movie_in_db(movie)
+    if title != '':
+        result = True
+        message = title
     else:
-        message = "Invalid movie"
+        result = False
+        message = "Movie not found"
     return {"success": result, "detail": message}
 
 @app.get("/user/ratings")

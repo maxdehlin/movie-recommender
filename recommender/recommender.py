@@ -10,6 +10,7 @@ import heapq
 import os
 from recommender.models import MovieSimilarity, Rating
 from recommender.db import get_db, insert_rating_in_db
+from recommender.helpers import normalize
 from collections import namedtuple
 
 
@@ -51,7 +52,6 @@ class MovieRecommender:
 
 
     def tester(self):
-
         print(self.high_support_movies)
 
     
@@ -77,7 +77,8 @@ class MovieRecommender:
         ]
         self.movies = movie_list
         self.movie_titles = {movie.id: movie.title for movie in self.movies}
-        self.movie_inv_titles = {movie.title: movie.id for movie in self.movies}
+        # normalize title for easy of search later on
+        self.movie_inv_titles = {normalize(movie.title): movie.id for movie in self.movies}
 
 
     # Generates a sparse utility matrix
@@ -288,29 +289,37 @@ class MovieRecommender:
     # recommends k movies based on given titles
     # expect movie_ratings = [(movie_title, rating), ...]
     def recommend_movies(self, session,  movie_ratings, k=5):
-        seed_movies = [(self.movie_inv_titles[x.title], x.rating) for x in movie_ratings]
+        seed_movies = [(self.movie_inv_titles[normalize(x.title)], x.rating) for x in movie_ratings]
         rec_movie_ids = self.find_recommended_movies(session, seed_movies)[:k]
         rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
         return rec_movie_titles
 
 
+    # verifies that the movie exists
+    # returns the official title of the movie if exists
+    # returns empty string if the movie does not exist 
     def verify_movie_in_db(self, title):
-        exists = title in self.movie_inv_titles
+        normalized_title = normalize(title)
+        exists = normalized_title in self.movie_inv_titles
+        
         if exists:
-            print("Movie exists")
-        else:
-            print("Movie does not exist")
-        return exists
+            # fetch official title from movie_titles
+            # the title parameter could be an unofficial variation
+            movie_id = self.movie_inv_titles[normalized_title]
+            official_title = self.movie_titles[movie_id]
+            return official_title
+        print("Movie does not exist")
+        return ''
 
 
-    def get_user_ratings(self, session, user_id):
-        try:
-            ratings = session.query(Rating).filter(Rating.user_id == user_id).all()
-            return ratings
-        except SQLAlchemyError as e:
-            session.rollback()
-            print(f"Failed to fetch ratings for user {user_id}: {e}")
-            return []
+    # def get_user_ratings(self, session, user_id):
+    #     try:
+    #         ratings = session.query(Rating).filter(Rating.user_id == user_id).all()
+    #         return ratings
+    #     except SQLAlchemyError as e:
+    #         session.rollback()
+    #         print(f"Failed to fetch ratings for user {user_id}: {e}")
+    #         return []
         
     def get_user_ratings(self, session, user_id):
         ratings = session.query(Rating).filter(Rating.user_id == user_id).all()
@@ -328,7 +337,7 @@ class MovieRecommender:
 
     def insert_rating(self, session, user_id, movie, value):
         try:
-            movie_id = self.movie_inv_titles[movie]
+            movie_id = self.movie_inv_titles[normalize(movie)]
             if not movie_id:
                 return False
             success = insert_rating_in_db(session, user_id, movie_id, value)
