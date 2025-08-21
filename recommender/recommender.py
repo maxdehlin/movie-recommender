@@ -251,48 +251,61 @@ class MovieRecommender:
         return output
 
 
-    # find recommended movies from a set of seed movies
-    def find_recommended_movies(self, session, seed_ratings):
+    def find_recommended_movies(self, session, seed_ratings, max_results=50, k_per_seed=10):
+        # movies the user already supplied/rated
         seed_movies = set([x[0] for x in seed_ratings])
-        rated_movies = self.find_highly_rated_movies(seed_ratings)
+
+        rated_movies = self.find_highly_rated_movies(seed_ratings)  # list of movie_ids
+
         heap = []
         lists = []
-        k_recommended = 10
 
-        for i in range(len(rated_movies)):
-            list = self.topk_movies(session, rated_movies[i], k_recommended)
-            lists.append(list)
-            elem = list[0]
-            score = -elem.weighted_sim # negative score so its descending order
-            heap.append((score, i, 0, elem))
+        # build top-k lists per anchor and prime  heap
+        for i, anchor_id in enumerate(rated_movies):
+            lst = self.topk_movies(session, anchor_id, k_per_seed)  # elements have .movie_id, .neighbor_id, .weighted_sim
+            if not lst:
+                continue
+            lists.append(lst)
+            elem = lst[0]
+            score = -elem.weighted_sim  # min-heap => negative for descending
+            heap.append((score, len(lists) - 1, 0, elem))
+
+        if not heap:
+            return []
+
         heapq.heapify(heap)
 
         result = []
-        while heap:
+        seen = set(seed_movies)  # start by excluding seeds
+
+        while heap and len(result) < max_results:
             score, i, j, elem = heapq.heappop(heap)
-            movie_id = elem.movie_id
-            neighbor_id = elem.neighbor_id
 
-            if movie_id not in seed_movies:
-                result.append(movie_id)
-            if neighbor_id not in seed_movies:
-                result.append(neighbor_id)
+            # treat the neighbor as the candidate recommendation
+            candidate = elem.neighbor_id
 
-            # advance in list i
-            if j + 1 < len(lists[i]):
-                nxt = lists[i][j + 1]
+            # exclude seeds and previously yielded items
+            if candidate not in seen:
+                result.append(candidate)
+                seen.add(candidate)
+
+            # advance within list i
+            nxt_index = j + 1
+            if nxt_index < len(lists[i]):
+                nxt = lists[i][nxt_index]
                 nxt_score = -nxt.weighted_sim
-                heapq.heappush(heap, (nxt_score, i, j + 1, nxt))
+                heapq.heappush(heap, (nxt_score, i, nxt_index, nxt))
+
         return result
 
 
     # recommends k movies based on given titles
     # expect movie_ratings = [(movie_title, rating), ...]
     def recommend_movies(self, session,  movie_ratings, k=5):
-        seed_movies = [(self.movie_inv_titles[normalize(x.title)], x.rating) for x in movie_ratings]
+        seed_movies = [(x.id, x.rating) for x in movie_ratings]
         rec_movie_ids = self.find_recommended_movies(session, seed_movies)[:k]
         rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
-        return rec_movie_titles
+        return rec_movie_titles # change this to return movie_id and title
 
 
     # verifies that the movie exists
@@ -337,11 +350,14 @@ class MovieRecommender:
 
 
     def insert_rating(self, session, user_id, movie, value):
+        print('huh')
         try:
-            movie_id = self.movie_inv_titles[normalize(movie)]
+            movie_id = self.movie_inv_titles[normalize(movie)] or False
             if not movie_id:
+                print('no movie_id of this')
                 return False
             success = insert_rating_in_db(session, user_id, movie_id, value)
+
             return success
         except Exception:
             raise

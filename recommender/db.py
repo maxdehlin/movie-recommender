@@ -81,6 +81,7 @@ def insert_user(session, google_id, email, name):
 
 # change this to not be a named relation. just an int and a movie_id int
 def insert_rating_in_db(session, user_id, movie_id, value):
+    print('inserting rating into db, balls')
     try:
         rating = session.query(Rating).filter_by(user_id=user_id, movie_id=movie_id).first()
         if not rating:
@@ -88,9 +89,11 @@ def insert_rating_in_db(session, user_id, movie_id, value):
             session.add(rating)
             session.commit()
             session.refresh(rating)
+            print('success!! balls2')
             return True
         return False
     except Exception:
+        print('exception')
         session.rollback()
         raise
 

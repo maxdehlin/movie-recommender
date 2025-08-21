@@ -20,5 +20,4 @@ def normalize(s):
 
     # remove non-alphanumeric & collapse whitespace  
     s = re.sub(r'[^a-z0-9]+', ' ', s).strip()
-    print('butthole:', s)
     return s

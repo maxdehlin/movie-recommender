@@ -16,7 +16,7 @@ class ProfileRead(BaseModel):
 
 
 class Seed(BaseModel):
-    title: str
+    id: int
     rating: float
 
 

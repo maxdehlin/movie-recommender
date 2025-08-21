@@ -183,7 +183,9 @@ async def save_rating(
     session: Session = Depends(get_db)
 
 ):
+    print('wtf')
     success = recommender.insert_rating(session, user_id, rating.movie, rating.value)
+    print('success, balls3', success)
     return {"success": success}
 
 
