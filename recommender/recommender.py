@@ -77,6 +77,8 @@ class MovieRecommender:
         ]
         self.movies = movie_list
         self.movie_titles = {movie.id: movie.title for movie in self.movies}
+        self.movie_by_id = {m.id: m for m in self.movies}
+        self.movie_ids = set(self.movie_by_id.keys())
         # normalize title for easy of search later on
         self.movie_inv_titles = {normalize(movie.title): movie.id for movie in self.movies}
 
@@ -304,8 +306,17 @@ class MovieRecommender:
     def recommend_movies(self, session,  movie_ratings, k=5):
         seed_movies = [(x.id, x.rating) for x in movie_ratings]
         rec_movie_ids = self.find_recommended_movies(session, seed_movies)[:k]
-        rec_movie_titles = [self.movie_titles[x] for x in rec_movie_ids]
+        rec_movie = [self.movie_titles[x] for x in rec_movie_ids]
         return rec_movie_titles # change this to return movie_id and title
+    
+    def recommend_movies(self, session, movie_ratings, k=5):
+
+        seed_movies = [(x.id, x.rating) for x in movie_ratings]
+        rec_movie_ids = self.find_recommended_movies(session, seed_movies, max_results=k)
+
+
+        rec_movies = [self.movie_by_id[mid] for mid in rec_movie_ids if mid in self.movie_by_id]
+        return [{"id": m.id, "title": m.title, "genres": m.genres} for m in rec_movies]
 
 
     # verifies that the movie exists
@@ -349,14 +360,39 @@ class MovieRecommender:
 
 
     def insert_rating(self, session, user_id, movie, value):
-        print('huh')
+        """
+        Accepts:
+        - movie id (int or numeric str)
+        - dict with 'id' or 'movie_id' or 'title'
+        - title string
+        """
         try:
-            movie_id = self.movie_inv_titles[normalize(movie)] or False
-            if not movie_id:
-                print('no movie_id of this')
-                return False
-            success = insert_rating_in_db(session, user_id, movie_id, value)
+            movie_id = None
 
+            # dict payloads from the client
+            if isinstance(movie, dict):
+                if 'movie_id' in movie:
+                    movie_id = int(movie['movie_id'])
+                elif 'id' in movie:
+                    movie_id = int(movie['id'])
+                elif 'title' in movie:
+                    movie_id = self.movie_inv_titles.get(normalize(movie['title']))
+
+            # raw id (int or numeric str)
+            elif isinstance(movie, (int,)) or (isinstance(movie, str) and movie.isdigit()):
+                movie_id = int(movie)
+
+            # raw title string
+            else:
+                movie_id = self.movie_inv_titles.get(normalize(movie))
+
+            if not movie_id or movie_id not in self.movie_ids:
+                print('insert_rating: unknown movie', movie)
+                return False
+
+            success = insert_rating_in_db(session, user_id, movie_id, value)
             return success
-        except Exception:
+
+        except Exception as e:
+            session.rollback()
             raise
