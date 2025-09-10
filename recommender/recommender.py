@@ -312,16 +312,15 @@ class MovieRecommender:
     # returns the official title of the movie if exists
     # returns empty string if the movie does not exist 
     def verify_movie_in_db(self, title):
-        # fetch official title from movie_titles
-        # the title parameter could be an unofficial variation
         normalized_title = normalize(title)
-        if normalized_title in self.movie_inv_titles:
-
+        exists = normalized_title in self.movie_inv_titles
+        
+        if exists:
+            # fetch official title from movie_titles
+            # the title parameter could be an unofficial variation
             movie_id = self.movie_inv_titles[normalized_title]
             official_title = self.movie_titles[movie_id]
             return official_title
-
-
         print("Movie does not exist")
         return ''
 
